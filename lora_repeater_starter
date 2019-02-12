@@ -18,13 +18,13 @@ case "$1" in
   start)
     echo "Starting Lora_Repeater inq and deq"
     # run application you want to start
-    /usr/local/bin/inq &
-    /usr/local/bin/deq &
+    sh /mnt/data/LoRaRepeater/check_repeater.sh &
     ;;
   stop)
     echo "Stopping Lora_Repeater inq and deq"
     # kill application you want to stop
-    killall inq deq
+    killall check_repeater.sh
+    killall inq.py deq.py
     ;;
   *)
     echo "Usage: /etc/init.d/lora_repeater_starter{start|stop}"

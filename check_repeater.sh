@@ -7,7 +7,7 @@ do
     echo $totalNum
     if [ $totalNum -eq 0 ] ; then
         echo "inq is NOT running."
-        /usr/local/bin/inq &
+        /mnt/data/LoRaRepeater/inq.py &
     else
         echo "inq is running."
     fi
@@ -17,7 +17,7 @@ do
     echo $totalNumD
     if [ $totalNumD -eq 0 ] ; then
         echo "deq is NOT running."
-        /usr/local/bin/deq &
+        /mnt/data/LoRaRepeater/deq.py &
     else
         echo "deq is running."
     fi
