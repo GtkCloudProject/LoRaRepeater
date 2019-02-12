@@ -1,8 +1,5 @@
 #!/bin/sh
 
-echo "To change to root, please input the password of root"
-sudo su
-
 echo "To install required packages"
 apt-get update
 apt-get install -y mosquitto python-pip
