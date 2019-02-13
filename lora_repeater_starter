@@ -18,7 +18,7 @@ case "$1" in
   start)
     echo "Starting Lora_Repeater inq and deq"
     # run application you want to start
-    sh /mnt/data/LoRaRepeater/check_repeater.sh &
+    /mnt/data/LoRaRepeater/check_repeater.sh &
     ;;
   stop)
     echo "Stopping Lora_Repeater inq and deq"

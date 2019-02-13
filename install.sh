@@ -11,6 +11,10 @@ echo "To add system id 05 and key to database"
 mysql -uroot -p123456 lora -e "delete from table_netid where netid_group='05'"
 mysql -uroot -p123456 lora -e "insert into table_netid values ('05','05000000','05ffffff','1000','BA21C6216312C334597D88711D9EFABE','BA21C6216312C334597D88711D9EFABE');"
 
+echo "To kill check_repeater.sh inq.py and deq.py process"
+killall check_repeater.sh
+killall inq.py deq.py
+
 echo "To install lora_repeater packages"
 cd /mnt/data/LoRaRepeater
 cp lora_repeater_starter /etc/init.d/
