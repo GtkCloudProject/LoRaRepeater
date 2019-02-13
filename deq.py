@@ -8,7 +8,8 @@ import serial
 import logging
 import pymysql.cursors
 import socket
-
+import struct
+import binascii
 from logging.handlers import RotatingFileHandler
 
 USB_DEV_ARRAY = ["/dev/ttyS0"]
@@ -35,15 +36,18 @@ SENT_OK_TAG = "Radio Tx Done\r\n"
 REPLY_OK_STRING = "OK"
 
 Data_need_to_send = None
+Correction_Time_need_to_send = None
+Retransmission_need_to_send = None
 g_Frame_Count = ""
 Source_MAC_address = ""
+Time_interval = ""
 
 Nport1_ip_port = ('192.168.127.88',4001) #water meter
 Nport2_ip_port = ('192.168.127.88',4002) #rain meter
 Nport3_ip_port = ('192.168.127.88',4003) #radio
 Nport4_ip_port = ('192.168.127.88',4004) #display
-Diagnosis_PC_ip_port = ('192.168.127.178',4005)
-Application_Server_ip_port = ('192.168.127.178',4006)
+Diagnosis_PC_ip_port = ('192.168.127.99',4005)
+Application_Server_ip_port = ('192.168.127.101',4006)
 Microwave_PC_ip_port = ('192.168.127.102',4007)
 
 Nport1_connect_status = False #water meter
@@ -56,6 +60,8 @@ Microwave_PC_connect_status = False
 
 my_dict_appskey = {}
 my_dict_nwkskey = {}
+
+Endian = '>' #big-endian
 
 #add by nick
 def TCP_connect(name):
@@ -156,7 +162,7 @@ def build_app_group_table():
         connection.close()
 
 #add by nick
-def get_sensor_data_from_DB():
+def get_sensor_data_from_DB(tablename):
     # Connect to the database
     connection = pymysql.connect(host='localhost',
                                  user='root',
@@ -175,31 +181,77 @@ def get_sensor_data_from_DB():
             except:
                 connection.rollback()
                 print("No sensor DB")
-            try:
-                sql = "select sended_flag, raw_data, source_mac_address, frame_count from sensordata WHERE sended_flag='0' limit 1"
-                cursor.execute(sql)
-                global Source_MAC_address
-                global g_Frame_Count           
-                global Data_need_to_send
-                #print cursor.rowcount
-                if(cursor.rowcount>0):
-                    for row in cursor:
-                        Data_need_to_send = row["raw_data"]
-                        Source_MAC_address = row["source_mac_address"]
-                        g_Frame_Count = row["frame_count"]
-                        print "Source_MAC_address: " ,Source_MAC_address
-                        print "Data_need_to_send: ",Data_need_to_send
-                        print "Frame Count:", g_Frame_Count
-                else:   
-                    print "DB return null"
-                    Data_need_to_send = None
-            except:
-                connection.rollback()
+            global Source_MAC_address
+            global Retransmission_need_to_send
+            global Time_interval
+            global g_Frame_Count
+            global Data_need_to_send
+            global Correction_Time_need_to_send
+            if tablename == 'sensordata':
+                print "tablename == sensordata"
+                try:
+                    sql = "select sended_flag, raw_data, source_mac_address, frame_count from sensordata WHERE sended_flag='0' limit 1"
+                    cursor.execute(sql)
+                    #print cursor.rowcount
+                    if(cursor.rowcount>0):
+                        for row in cursor:
+                            Data_need_to_send = row["raw_data"]
+                            Source_MAC_address = row["source_mac_address"]
+                            g_Frame_Count = row["frame_count"]
+                            print "Source_MAC_address: " ,Source_MAC_address
+                            print "Data_need_to_send: ",Data_need_to_send
+                            print "Frame Count:", g_Frame_Count
+                    else:
+                        print "DB return null"
+                        Data_need_to_send = None
+                except:
+                    connection.rollback()
+            elif tablename == 'correctiontime':
+                print "tablename == correctiontime"
+                try:
+                    sql = "select source_mac_address, sended_flag, time, frame_count from correctiontime WHERE sended_flag='0' limit 1"
+                    cursor.execute(sql)
+                    #print cursor.rowcount
+                    if(cursor.rowcount>0):
+                        for row in cursor:
+                            Correction_Time_need_to_send = row["time"]
+                            g_Frame_Count = row["frame_count"]
+                            Source_MAC_address = row["source_mac_address"]
+                            print "Correction_Time_need_to_send: ",Correction_Time_need_to_send
+                            print "Frame Count:", g_Frame_Count
+                            print "Source_MAC_address: " ,Source_MAC_address
+                    else:
+                        print "DB return null"
+                        Correction_Time_need_to_send = None
+                except:
+                    print "Correction_Time table except"
+                    connection.rollback()
+            elif tablename == 'retransmission':
+                print "tablename == retransmission"
+                try:
+                    sql = "select source_mac_address, sended_flag, time, time_interval, source_mac_address, frame_count from retransmission WHERE sended_flag='0' limit 1"
+                    cursor.execute(sql)
+                    #print cursor.rowcount
+                    if(cursor.rowcount>0):
+                        for row in cursor:
+                            Retransmission_need_to_send = row["time"]
+                            Source_MAC_address = row["source_mac_address"]
+                            Time_interval = row["time_interval"]
+                            g_Frame_Count = row["frame_count"]
+                            print "Source_MAC_address: " ,Source_MAC_address
+                            print "Retransmission_need_to_send: ",Retransmission_need_to_send
+                            print "Time_interval:",Time_interval
+                            print "Frame Count:", g_Frame_Count
+                    else:
+                        print "DB return null"
+                        Retransmission_need_to_send = None
+                except:
+                    connection.rollback()
     finally:
         connection.close()
 
 #add by nick
-def update_sensor_data_to_DB(l_sensor_macAddr, l_sensor_data, l_sensor_frameCnt):
+def update_sensor_data_to_DB(type, l_sensor_macAddr, l_sensor_data, l_sensor_frameCnt):
     # Connect to the database
     connection = pymysql.connect(host='localhost',
                                  user='root',
@@ -215,16 +267,26 @@ def update_sensor_data_to_DB(l_sensor_macAddr, l_sensor_data, l_sensor_frameCnt)
                 cursor.execute("USE sensor")
             except:
                 print("No sensor DB")
+            if type == 1:
+                print("update sensordata table")
+                sql = "update sensordata set sended_flag=1 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                cursor.execute(sql)
+                connection.commit()
 
-            sql = "update sensordata set sended_flag=1 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt) 
-            cursor.execute(sql)
-            connection.commit()
-
-            tmp_time = time.localtime(int(l_sensor_data[2:10],16))
-            sql = "update sensordata set time='%s' where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s' AND sended_flag=1" % (time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
-            cursor.execute(sql)
-            connection.commit()
-
+                #tmp_time = time.localtime(int(l_sensor_data[2:10],16))
+                #sql = "update sensordata set time='%s' where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s' AND sended_flag=1" % (time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                #cursor.execute(sql)
+                #connection.commit()
+            elif type == 2:
+                print("update correctiontime table")
+                sql = "update correctiontime set sended_flag=1 where source_mac_address='%s' AND time='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                cursor.execute(sql)
+                connection.commit()
+            elif type == 3:
+                print("update retransmission table")
+                sql = "update retransmission set sended_flag=1 where source_mac_address='%s' AND time='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                cursor.execute(sql)
+                connection.commit()
     finally:
         connection.close()
 
@@ -304,7 +366,7 @@ def main():
             break
 
     if global_check_dongle_exist is False:
-        my_logger.error('no device be detected, exit!!!')
+        print('no device be detected, exit!!!')
         sys.exit()
 
     my_dict = {}
@@ -317,28 +379,38 @@ def main():
     #TCP_connect(Nport4_ip_port)
 
     while 1:
-        get_sensor_data_from_DB()
+        tablename = 'sensordata'
+        get_sensor_data_from_DB(tablename)
         if Data_need_to_send != None:
-            print "a packet need to send"
+            print "Sensor data send"
             sensor_data = Data_need_to_send
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
-            #for test, need fix
-            sensor_frameCnt =""  #store in DB or caculate by repeater? by nick
-            sensor_nwkskey = ""
-            sensor_appskey = ""
             sensor_frameCnt = g_Frame_Count
             if sensor_macAddr[0:2] in my_dict_appskey:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
             else:
-                my_logger.info('Not in ABP Group Config Rule, so give up')
+                print('Not in ABP Group Config Rule, so give up')
 
             print("sensor_data:" + sensor_data )
-            # data_sending = "AT+DTX="+str(sensor_data_len)+","+sensor_data+"\n"
             data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
             data_sending = str(data_sending)
             print data_sending
+            ser.flushInput()
+            ser.flushOutput()
+            ser.write(data_sending)
+            time.sleep(MY_SLEEP_INTERVAL)
+            return_state = ser.readlines()
+            print(return_state)
+            Data_need_to_send = None
+            if SENT_OK_TAG in return_state:
+                print("Result: SENT.")
+                #sended than update DB change sended flag to 1 by nick
+                update_sensor_data_to_DB(1, sensor_macAddr, sensor_data, sensor_frameCnt);
+            else:
+                print("Result: Send FAIL!")
+
             #send data to Application Server that if connected
             try:
                 if (Application_Server_connect_status == True):
@@ -346,34 +418,7 @@ def main():
             except socket.error:
                 print"sock2 Application_Server socket error"
                 TCP_connect(Application_Server_ip_port)
-            #GLOBAL_TIME_RUNNING += MY_SLEEP_INTERVAL
 
-            my_logger.info('Sending')
-            ser.flushInput()
-            ser.flushOutput()
-            ser.write(data_sending)
-            #sock.send(data_sending)
-            #my_logger.info(data_sending)
-            time.sleep(MY_SLEEP_INTERVAL)
-            return_state = ser.readlines()
-            print(return_state)
-            my_logger.info(return_state)
-            update_sensor_data_to_DB(sensor_macAddr, sensor_data, sensor_frameCnt);
-            Data_need_to_send = None
-            if SENT_OK_TAG in return_state:
-                time.sleep(MY_SLEEP_INTERVAL)
-                print("Result: SENT.")
-                #sended than update DB change sended flag to 1 by nick
-                update_sensor_data_to_DB(sensor_macAddr, sensor_data, sensor_frameCnt);             
-                #my_logger.info('Result: SENT.')
-                #GLOBAL_COUNT_SENT += 1
-                #os.rename(MY_SENDING_FILE_PATH + sending_f, MY_SENT_FILE_PATH + sending_f)
-            else:
-                time.sleep(MY_SLEEP_INTERVAL)
-                print("Result: FAIL! move to FAIL")
-                #my_logger.error('Result: FAIL! move to FAIL.')
-                #GLOBAL_COUNT_FAIL += 1
-                #os.rename(MY_SENDING_FILE_PATH + sending_f, MY_SEND_FAIL_FILE_PATH + sending_f)
             #add Radio Send by nick
             try:
                 TCP_connect(Nport3_ip_port) #radio interface
@@ -383,6 +428,7 @@ def main():
                 TCP_connect(Nport3_ip_port)
         else:
              print("Waiting for incoming queue")
+
         #add Diagnosis_PC Send by nick
         try:
             if (Diagnosis_PC_connect_status == True):
@@ -390,6 +436,88 @@ def main():
         except socket.error:
             print"sock1 Diagnosis_PC socket error"
             TCP_connect(Diagnosis_PC_ip_port)
-        time.sleep(5)
+
+        tablename = 'correctiontime'
+        get_sensor_data_from_DB(tablename)
+        if Correction_Time_need_to_send != None:
+            print"Correction time send"
+            #convert Correction_Time_need_to_send to hex time
+            #sensor data = command and data type + time
+            Command = 1<<2
+            Data_Type = 0<<0
+            Command_MAC_Level = 0<<5
+            CMD= Command_MAC_Level | Command | Data_Type
+            hextime = int(time.mktime(time.strptime(str(Correction_Time_need_to_send), '%Y-%m-%d %H:%M:%S')))
+            sensor_data = binascii.hexlify(struct.pack(Endian + 'BL', CMD, hextime))
+            print sensor_data
+            sensor_macAddr = Source_MAC_address
+            print sensor_macAddr
+            sensor_data_len = len(sensor_data)
+            sensor_frameCnt = g_Frame_Count
+            macaddr = '05'
+            if macaddr in my_dict_appskey:
+                sensor_nwkskey = my_dict_nwkskey[macaddr[0:2]]
+                sensor_appskey = my_dict_appskey[macaddr[0:2]]
+            else:
+                print('Not in ABP Group Config Rule, so give up')
+
+            print("sensor_data:" + sensor_data )
+            data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
+            data_sending = str(data_sending)
+            print data_sending
+            #update DB sended flag here when sended and return status = "tx done" bu nick
+            ser.flushInput()
+            ser.flushOutput()
+            ser.write(data_sending)
+            time.sleep(MY_SLEEP_INTERVAL)
+            return_state = ser.readlines()
+            print(return_state)
+            Data_need_to_send = None
+            if SENT_OK_TAG in return_state:
+                print("Result: SENT.")
+                #sended than update DB change sended flag to 1 by nick
+                update_sensor_data_to_DB(2, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
+            else:
+                print("Result: Send FAIL!")
+        #time.sleep(MY_SLEEP_INTERVAL)
+
+        tablename = 'retransmission'
+        get_sensor_data_from_DB(tablename)
+        if Retransmission_need_to_send != None:
+            print"Retransmit send"
+            Command = 1<<2
+            Data_Type = 0<<0
+            Command_MAC_Level = 0<<5
+            CMD= Command_MAC_Level | Command | Data_Type
+            hextime = int(time.mktime(time.strptime(str(Retransmission_need_to_send), '%Y-%m-%d %H:%M:%S')))
+            sensor_data = binascii.hexlify(struct.pack(Endian + 'BLB', CMD, hextime, Time_interval))
+            print sensor_data
+            sensor_macAddr = Source_MAC_address
+            sensor_data_len = len(sensor_data)
+            sensor_frameCnt = g_Frame_Count
+            if sensor_macAddr[0:2] in my_dict_appskey:
+                sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
+                sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
+            else:
+                print('Not in ABP Group Config Rule, so give up')
+
+            print("sensor_data:" + sensor_data )
+            data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
+            data_sending = str(data_sending)
+            print data_sending
+            ser.flushInput()
+            ser.flushOutput()
+            ser.write(data_sending)
+            time.sleep(MY_SLEEP_INTERVAL)
+            return_state = ser.readlines()
+            print(return_state)
+            Data_need_to_send = None
+            if SENT_OK_TAG in return_state:
+                print("Result: SENT.")
+                #sended than update DB change sended flag to 1 by nick
+                update_sensor_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
+            else:
+                print("Result: Send FAIL!")
+        time.sleep(MY_SLEEP_INTERVAL)
 if __name__ == "__main__":
     main()

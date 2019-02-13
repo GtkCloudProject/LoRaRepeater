@@ -31,7 +31,7 @@ Nport3_ip_port = ('192.168.127.88',4003) #radio
 Nport4_ip_port = ('192.168.127.88',4004) #display
 Diagnosis_PC_ip_port = ('192.168.127.99',4005)
 Application_Server_ip_port = ('192.168.127.101',4006)
-PC_ip_port = ('192.168.127.102',4007)
+Microwave_PC_ip_port = ('192.168.127.102',4007)
 
 MAC_Address=0
 MAC_Level=0
@@ -70,8 +70,7 @@ def get_lora_module_addr(dev_path):
         # print 'FAIL: Cannot open Serial Port (No LoRa Node Inserted)'
         return None
 
-#connect_DB_put_data(3, sensor_mac, sensor_data, sensor_count)
-def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #type 1:Water 2:Rain 3:Lora
+def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #type 1:Water 2:Rain 3:Lora 4:correctiontime 5:retransmission
     # Connect to the database
     connection = pymysql.connect(host='localhost',
                                  user='root',
@@ -89,7 +88,15 @@ def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #typ
             sql = "create database if not exists sensor"
             cursor.execute(sql)
             cursor.execute("USE sensor")
-            sql = "create table if not exists sensordata(source_mac_address CHAR(8) NOT NULL,time TIMESTAMP,raw_data CHAR(22),sended_flag BOOLEAN NOT NULL default 0, retransmit_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, raw_data, frame_count))"
+            if type <=3:
+                print("DB type <=3")
+                sql = "create table if not exists sensordata(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,raw_data CHAR(22),sended_flag BOOLEAN NOT NULL default 0, retransmit_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, raw_data, frame_count))"
+            elif type == 4:
+                print("DB type == 4")
+                sql = "create table if not exists correctiontime(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
+            elif type == 5:
+                print("DB type == 5")
+                sql = "create table if not exists retransmission(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,time_interval tinyint(1) NOT NULL default 0, sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL,UNIQUE(source_mac_address, time, frame_count))"
             cursor.execute(sql)
             SourceMACAddress = MAC_Address
             if type == 1:
@@ -106,6 +113,20 @@ def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #typ
                 print("parameter = Lora")
                 tmp_time = time.localtime(int(p_sensor_data[2:10],16))
                 sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s')" % (p_sensor_mac[8:16],time.strftime('%Y-%m-%d %H:%M:%S',tmp_time) ,p_sensor_data, p_sensor_count)
+                cursor.execute(sql)
+                connection.commit()
+            elif type == 4:
+                print("parameter = Correction Time")
+                tmp_time = time.localtime(int(p_sensor_data,16))
+                sql = "insert ignore into correctiontime (source_mac_address, time, frame_count) values('%s', '%s', '%s')" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_count)
+                cursor.execute(sql)
+                connection.commit()
+            elif type == 5:
+                print("parameter = Retransmition")
+                tmp_time = time.localtime(int(p_sensor_data[0:8],16))
+                time_interval = int(p_sensor_data[8:10], 16)
+                print "time_interval:",time_interval
+                sql = "insert ignore into retransmission(source_mac_address, time, time_interval, frame_count) values('%s', '%s', '%s', '%s')" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), time_interval, p_sensor_count)
                 cursor.execute(sql)
                 connection.commit()
     finally:
@@ -151,6 +172,7 @@ def on_message(client, userdata, msg):
 def TCP_connect(name):
     global sock1
     global sock2
+    global sock3
 
     if name == Nport1_ip_port:
         try:
@@ -176,6 +198,18 @@ def TCP_connect(name):
             print ("sock2 Rain connect")
         except:
             print("sock2 Rain Meter error")
+            pass
+    elif name == Application_Server_ip_port:
+        try:
+            sock3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock3.settimeout(1)
+            sock3.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+            sock3.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
+            sock3.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
+            sock3.connect(Application_Server_ip_port)
+            print ("sock3 Application Server connect")
+        except:
+            print("sock3 Application Server connect error")
             pass
 
 def main():
@@ -243,11 +277,12 @@ def main():
     dot_str = ','
     TCP_connect(Nport1_ip_port)
     TCP_connect(Nport2_ip_port)
+    TCP_connect(Application_Server_ip_port)
     global Sensor_Count
     while True:
         try:
             #Await a read event
-            rlist, wlist, elist = select.select( [sock1, sock2], [], [], 5)
+            rlist, wlist, elist = select.select( [sock1, sock2, sock3], [], [], 5)
         except select.error:
             print "select error"
 
@@ -267,17 +302,20 @@ def main():
                         except:
                             Water_int =0
                         Water_decimal = int((Water_float - Water_int)*100)
-                        Command = 1<<2
+                        Command = 0<<2
                         Data_Type = 1<<0
                         Command_MAC_Level = MAC_Level<<5
                         Time = int(time.time())
-                        Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
+                        #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
                         Water_format = binascii.hexlify(struct.pack(Endian + 'BLHB', CMD, Time, Water_int, Water_decimal))
                         print Water_format
-                        Sensor_Count +=1
+                        if Sensor_Count == 9999:
+                            Sensor_Count = 1
+                        else:
+                            Sensor_Count +=1
                         print"Sensor count:"+str(Sensor_Count)
-                        connect_DB_put_data(1,MAC_Address,Water_format,Sensor_Count)
+                        connect_DB_put_data(1, MAC_Address, Water_format, Sensor_Count)
                     if not recvdata:
                         print "sock1 Water Meter disconnect"
                         TCP_connect(Nport1_ip_port)
@@ -294,22 +332,82 @@ def main():
                            Rain_int = int(Rain)
                         except ValueError:
                            Rain_int = 0
-                        Command = 1<<2
-                        Data_Type = 2<<0
+                        Command = 0<<2
+                        Data_Type = 1<<1
                         Command_MAC_Level = MAC_Level<<5
                         Time = int(time.time())
-                        Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
+                        #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
                         Rain_format = binascii.hexlify(struct.pack(Endian + 'BLH', CMD, Time, Rain_int))
                         print Rain_format
-                        Sensor_Count+=1
+                        if Sensor_Count == 9999:
+                            Sensor_Count = 1
+                        else:
+                            Sensor_Count +=1
                         print "Sensor count:"+str(Sensor_Count)
-                        connect_DB_put_data(2,MAC_Address,Rain_format,Sensor_Count)
+                        connect_DB_put_data(2, MAC_Address, Rain_format, Sensor_Count)
                     if not recvdata:
                         print "sock2 Rain Meter disconnect"
                         TCP_connect(Nport2_ip_port)
                 except socket.error:
                     print "sock2 Rain Meter socket error"
+                    time.sleep(5)
+            elif sock3 == sock: #Application server
+                try:
+                    recvdata, addr = sock.recvfrom(1024)
+                    if recvdata:
+                        print "received Application Server Data:"+str(recvdata)
+                        #parser receive data is correction time or retransmit command
+                        command = recvdata[8:10]
+                        if command == '04':
+                            datalen = len(recvdata)
+                            if datalen == 18:
+                                print "received correction time command"
+                                #replace system time here by nick
+                                correcttime = recvdata[10:18]
+                                #print "correcttime:",correcttime
+                                tmp_time = time.localtime(int(correcttime,16))
+                                #print "tmp_time:",tmp_time
+                                strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
+                                #print "strtime:",strtime
+                                os.system('date -s "%s"' % strtime)
+                                server_mac_address = recvdata[0:8]
+                                #print "server_mac_address",server_mac_address
+                                if Sensor_Count == 9999:
+                                    Sensor_Count = 1
+                                else:
+                                    Sensor_Count +=1
+                                connect_DB_put_data(4, server_mac_address, correcttime, Sensor_Count)
+                            else:
+                                print "received correction time command but length error!!!"
+                        elif command == '08':
+                            datalen = len(recvdata)
+                            if datalen == 20:
+                                print "received retransmit command"
+                                server_mac_address = recvdata[0:8]
+                                #server_time = recvdata[10:18]
+                                #print server_time
+                                #time_interval = int(recvdata[18:20], 16)
+                                #print "time_interval: ",time_interval
+                                data = recvdata[10:20]
+                                if Sensor_Count == 9999:
+                                    Sensor_Count = 1
+                                else:
+                                    Sensor_Count +=1
+                                connect_DB_put_data(5, server_mac_address, data, Sensor_Count)
+                            else:
+                                print "received retransmit command but length error!!!"
+                        else:
+                            print "received unknow command"
+                        #try:
+                         #   Rain_int = int(Rain)
+                        #except ValueError:
+                         #   Rain_int = 0
+                    if not recvdata:
+                        print "sock3 Application Server disconnect"
+                        TCP_connect(Application_Server_ip_port)
+                except socket.error:
+                    print "sock3 Application Server socket error"
                     time.sleep(5)
             else:
                 print"Socket Else"
