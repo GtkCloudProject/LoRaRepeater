@@ -22,4 +22,4 @@ chmod 755 /mnt/data/LoRaRepeater/inq.py /mnt/data/LoRaRepeater/deq.py /mnt/data/
 update-rc.d -f lora_repeater_starter remove;
 update-rc.d lora_repeater_starter defaults 99;
 
-echo "Finished: lora_repeater_stater start or reboot wil be run";
+echo "Finished: /etc/init.d/lora_repeater_starter start or reboot wil be run";
