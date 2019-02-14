@@ -40,7 +40,6 @@ Correction_Time_need_to_send = None
 Retransmission_need_to_send = None
 g_Frame_Count = ""
 Source_MAC_address = ""
-Time_interval = ""
 
 Nport1_ip_port = ('192.168.127.88',4001) #water meter
 Nport2_ip_port = ('192.168.127.88',4002) #rain meter
@@ -183,7 +182,6 @@ def get_sensor_data_from_DB(tablename):
                 print("No sensor DB")
             global Source_MAC_address
             global Retransmission_need_to_send
-            global Time_interval
             global g_Frame_Count
             global Data_need_to_send
             global Correction_Time_need_to_send
@@ -209,12 +207,12 @@ def get_sensor_data_from_DB(tablename):
             elif tablename == 'correctiontime':
                 print "tablename == correctiontime"
                 try:
-                    sql = "select source_mac_address, sended_flag, time, frame_count from correctiontime WHERE sended_flag='0' limit 1"
+                    sql = "select source_mac_address, sended_flag, raw_data, frame_count from correctiontime WHERE sended_flag='0' limit 1"
                     cursor.execute(sql)
                     #print cursor.rowcount
                     if(cursor.rowcount>0):
                         for row in cursor:
-                            Correction_Time_need_to_send = row["time"]
+                            Correction_Time_need_to_send = row["raw_data"]
                             g_Frame_Count = row["frame_count"]
                             Source_MAC_address = row["source_mac_address"]
                             print "Correction_Time_need_to_send: ",Correction_Time_need_to_send
@@ -229,18 +227,16 @@ def get_sensor_data_from_DB(tablename):
             elif tablename == 'retransmission':
                 print "tablename == retransmission"
                 try:
-                    sql = "select source_mac_address, sended_flag, time, time_interval, source_mac_address, frame_count from retransmission WHERE sended_flag='0' limit 1"
+                    sql = "select source_mac_address, sended_flag, raw_data, source_mac_address, frame_count from retransmission WHERE sended_flag='0' limit 1"
                     cursor.execute(sql)
                     #print cursor.rowcount
                     if(cursor.rowcount>0):
                         for row in cursor:
-                            Retransmission_need_to_send = row["time"]
+                            Retransmission_need_to_send = row["raw_data"]
                             Source_MAC_address = row["source_mac_address"]
-                            Time_interval = row["time_interval"]
                             g_Frame_Count = row["frame_count"]
                             print "Source_MAC_address: " ,Source_MAC_address
                             print "Retransmission_need_to_send: ",Retransmission_need_to_send
-                            print "Time_interval:",Time_interval
                             print "Frame Count:", g_Frame_Count
                     else:
                         print "DB return null"
@@ -279,12 +275,12 @@ def update_sensor_data_to_DB(type, l_sensor_macAddr, l_sensor_data, l_sensor_fra
                 #connection.commit()
             elif type == 2:
                 print("update correctiontime table")
-                sql = "update correctiontime set sended_flag=1 where source_mac_address='%s' AND time='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                sql = "update correctiontime set sended_flag=1 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
             elif type == 3:
                 print("update retransmission table")
-                sql = "update retransmission set sended_flag=1 where source_mac_address='%s' AND time='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                sql = "update retransmission set sended_flag=1 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
     finally:
@@ -442,22 +438,21 @@ def main():
         if Correction_Time_need_to_send != None:
             print"Correction time send"
             #convert Correction_Time_need_to_send to hex time
-            #sensor data = command and data type + time
-            Command = 1<<2
-            Data_Type = 0<<0
-            Command_MAC_Level = 0<<5
-            CMD= Command_MAC_Level | Command | Data_Type
-            hextime = int(time.mktime(time.strptime(str(Correction_Time_need_to_send), '%Y-%m-%d %H:%M:%S')))
-            sensor_data = binascii.hexlify(struct.pack(Endian + 'BL', CMD, hextime))
+            sensor_data = Correction_Time_need_to_send
+            #Command = 1<<2
+            #Data_Type = 0<<0
+            #Command_MAC_Level = 0<<5
+            #CMD= Command_MAC_Level | Command | Data_Type
+            #hextime = int(time.mktime(time.strptime(str(Correction_Time_need_to_send), '%Y-%m-%d %H:%M:%S')))
+            #sensor_data = binascii.hexlify(struct.pack(Endian + 'BL', CMD, hextime))
             print sensor_data
             sensor_macAddr = Source_MAC_address
             print sensor_macAddr
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
-            macaddr = '05'
-            if macaddr in my_dict_appskey:
-                sensor_nwkskey = my_dict_nwkskey[macaddr[0:2]]
-                sensor_appskey = my_dict_appskey[macaddr[0:2]]
+            if sensor_macAddr[0:2] in my_dict_appskey:
+                sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
+                sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
             else:
                 print('Not in ABP Group Config Rule, so give up')
 
@@ -485,12 +480,13 @@ def main():
         get_sensor_data_from_DB(tablename)
         if Retransmission_need_to_send != None:
             print"Retransmit send"
-            Command = 1<<2
-            Data_Type = 0<<0
-            Command_MAC_Level = 0<<5
-            CMD= Command_MAC_Level | Command | Data_Type
-            hextime = int(time.mktime(time.strptime(str(Retransmission_need_to_send), '%Y-%m-%d %H:%M:%S')))
-            sensor_data = binascii.hexlify(struct.pack(Endian + 'BLB', CMD, hextime, Time_interval))
+            sensor_data = Retransmission_need_to_send
+            #Command = 1<<3
+            #Data_Type = 0<<0
+            #Command_MAC_Level = 0<<5
+            #CMD= Command_MAC_Level | Command | Data_Type
+            #hextime = int(time.mktime(time.strptime(str(Retransmission_need_to_send), '%Y-%m-%d %H:%M:%S')))
+            #sensor_data = binascii.hexlify(struct.pack(Endian + 'BLB', CMD, hextime, Time_interval))
             print sensor_data
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
