@@ -90,7 +90,7 @@ def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #typ
             cursor.execute("USE sensor")
             if type <=3:
                 print("DB type <=3")
-                sql = "create table if not exists sensordata(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, retransmit_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, raw_data, frame_count))"
+                sql = "create table if not exists sensordata(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, retransmit_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
             elif type == 4:
                 print("DB type == 4")
                 sql = "create table if not exists correctiontime(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
@@ -185,16 +185,24 @@ def on_message(client, userdata, msg):
 
         print('Data is:')
         print(sensor_data)
-        Command = sensor_data[0:2]
+        Command = int(sensor_data[0:2],16)
         print "Command:",Command
+        mac_level = Command>>5
+        print "mac_level:",mac_level
+        CMD = (Command>>2) & ~( 1<<3 | 1<<4 | 1<<5)
+        print "CMD:",CMD
+        Data_type = Command & ~( 1<<2 | 1<<3 | 1<<4 | 1<<5 | 1<<6 | 1<<7 )
+        print "Data_type:",Data_type
         print('now frameCnt is:')
         print(sensor_count)
 # Store data to DB
 # Check the command if not sensor data do not insert to DB
-        if Command == '22' or Command == '21':
-            print("Ready to put sensor data to DB")    
-            connect_DB_put_data(3, sensor_mac, sensor_data, sensor_count)
-        elif Command == '04':
+        if Data_type == 1 or Data_type == 2:
+            print"Receive Sensor data from lora"
+            if MAC_Level >= mac_level:
+                print("Ready to put sensor data to DB")
+                connect_DB_put_data(3, sensor_mac, sensor_data, sensor_count)
+        elif Data_type == 0 and CMD == 1:
             print("Receive Correction Lora Packet")
             #replace system time here by nick
             correcttime = sensor_data[2:10]
@@ -207,9 +215,11 @@ def on_message(client, userdata, msg):
             #pepare correction time ack
             print "MAC_Address:",MAC_Address
             print "sensor_mac:",sensor_mac[8:16]
-            connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count)
-            connect_DB_put_data(4, MAC_Address, sensor_data, sensor_count)
-        elif Command == '08':
+            if MAC_Level <= mac_level:
+                print("Ready to put correction time data to DB")
+                connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count)
+                connect_DB_put_data(4, MAC_Address, sensor_data, sensor_count)
+        elif Data_type == 0 and CMD == 2:
             print("Receive Retransmit Lora Packet")
             #select witch sensor data need to retransmit
             retransmit_time = sensor_data[2:10]
@@ -218,7 +228,9 @@ def on_message(client, userdata, msg):
             print "strtime:",strtime
             time_interval = int(sensor_data[10:12],16)
             print "time_interval:",time_interval
-            connect_DB_select_data(strtime, time_interval)
+            if MAC_Level <= mac_level:
+                print("Ready to put retransmit data to DB")
+                connect_DB_select_data(strtime, time_interval)
         else:
             print("not sensor data lora packet")
     except:

@@ -34,6 +34,7 @@ GLOBAL_COUNT_FAIL = 0
 
 SENT_OK_TAG = "Radio Tx Done\r\n"
 REPLY_OK_STRING = "OK"
+REPLY_STRING = "+CDEVADDR:"
 
 Data_need_to_send = None
 Correction_Time_need_to_send = None
@@ -60,6 +61,7 @@ Microwave_PC_connect_status = False
 my_dict_appskey = {}
 my_dict_nwkskey = {}
 
+MAC_Level=0
 Endian = '>' #big-endian
 
 #add by nick
@@ -286,16 +288,32 @@ def update_sensor_data_to_DB(type, l_sensor_macAddr, l_sensor_data, l_sensor_fra
     finally:
         connection.close()
 
-def check_lora_module(dev_path):
+#get MAC Address for serial
+def get_lora_module_addr(dev_path):
     try:
         ser = serial.Serial(dev_path, 9600, timeout=0.5)
         ser.flushInput()
         ser.flushOutput()
-        ser.write("AT\r\n")
+        #ser.write("AT+cdevaddr=05002001\r\n")
+        ser.write("AT+cdevaddr?\r\n")
         #time.sleep(3)
-        check_my_dongle = ser.readlines()
-        #if any(REPLY_OK_STRING in s for s in check_my_dongle):
-        #print('My USB dongle checked')
+        check_my_dongle = str(ser.readlines())
+        #print check_my_dongle
+        global MAC_Address, MAC_Level
+        MAC_Address = check_my_dongle[check_my_dongle.find(REPLY_STRING) + 10: check_my_dongle.find(REPLY_STRING) + 18]
+        print "MAC_Address:",MAC_Address
+        if(MAC_Address[4:5]=='1'):
+            MAC_Level = 1
+        elif (MAC_Address[4:5]=='2'):
+            MAC_Level = 2
+        elif (MAC_Address[4:5]=='3'):
+            MAC_Level = 3
+        elif (MAC_Address[4:5]=='4'):
+            MAC_Level = 4
+        else:
+            MAC_Level = 0
+            print "MAC Level Error reset to 0"
+        #my_logger.info('My USB dongle checked')
         return ser
         #else:
             #return None
@@ -305,8 +323,8 @@ def check_lora_module(dev_path):
 
 def main():
     global Data_need_to_send
-    Data_need_to_send = None
-
+    global Retransmission_need_to_send
+    global Correction_Time_need_to_send
     # start:
     # make queue file folder
     if not os.path.exists(MY_MQTT_QUEUE_FILE_PATH):
@@ -351,7 +369,7 @@ def main():
     global_check_dongle_exist = False
     for devPath in USB_DEV_ARRAY:
         #print devPath
-        ser = check_lora_module(devPath)
+        ser = get_lora_module_addr(devPath)
         if ser is None:
             continue
         else:
@@ -379,7 +397,16 @@ def main():
         get_sensor_data_from_DB(tablename)
         if Data_need_to_send != None:
             print "Sensor data send"
-            sensor_data = Data_need_to_send
+            #sensor_data = Data_need_to_send
+            CMD = int(Data_need_to_send[0:2],16)
+            tmp_data = Data_need_to_send[2:]
+            recv_MAC_Level = CMD>>5
+            if MAC_Level != recv_MAC_Level:
+                CMD = (MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
+            cmd_hex_data = binascii.hexlify(struct.pack(Endian + 'B', CMD))
+            print cmd_hex_data
+            sensor_data = str(cmd_hex_data)+tmp_data
+            print sensor_data
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
@@ -399,11 +426,11 @@ def main():
             time.sleep(MY_SLEEP_INTERVAL)
             return_state = ser.readlines()
             print(return_state)
-            Data_need_to_send = None
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
                 #sended than update DB change sended flag to 1 by nick
-                update_sensor_data_to_DB(1, sensor_macAddr, sensor_data, sensor_frameCnt);
+                update_sensor_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
+                Data_need_to_send = None
             else:
                 print("Result: Send FAIL!")
 
@@ -438,13 +465,17 @@ def main():
         if Correction_Time_need_to_send != None:
             print"Correction time send"
             #convert Correction_Time_need_to_send to hex time
-            sensor_data = Correction_Time_need_to_send
-            #Command = 1<<2
-            #Data_Type = 0<<0
-            #Command_MAC_Level = 0<<5
-            #CMD= Command_MAC_Level | Command | Data_Type
-            #hextime = int(time.mktime(time.strptime(str(Correction_Time_need_to_send), '%Y-%m-%d %H:%M:%S')))
-            #sensor_data = binascii.hexlify(struct.pack(Endian + 'BL', CMD, hextime))
+            #sensor_data = Correction_Time_need_to_send
+            CMD = int(Correction_Time_need_to_send[0:2],16)
+            print"CMD:",CMD
+            tmp_data = Correction_Time_need_to_send[2:]
+            recv_MAC_Level = CMD>>5
+            print "recv_MAC_Level:",recv_MAC_Level
+            if MAC_Level != recv_MAC_Level:
+                CMD = (MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
+            cmd_hex_data = binascii.hexlify(struct.pack(Endian + 'B', CMD))
+            print cmd_hex_data
+            sensor_data = str(cmd_hex_data)+tmp_data
             print sensor_data
             sensor_macAddr = Source_MAC_address
             print sensor_macAddr
@@ -467,11 +498,11 @@ def main():
             time.sleep(MY_SLEEP_INTERVAL)
             return_state = ser.readlines()
             print(return_state)
-            Data_need_to_send = None
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
                 #sended than update DB change sended flag to 1 by nick
                 update_sensor_data_to_DB(2, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
+                Correction_Time_need_to_send = None
             else:
                 print("Result: Send FAIL!")
         #time.sleep(MY_SLEEP_INTERVAL)
@@ -481,12 +512,14 @@ def main():
         if Retransmission_need_to_send != None:
             print"Retransmit send"
             sensor_data = Retransmission_need_to_send
-            #Command = 1<<3
-            #Data_Type = 0<<0
-            #Command_MAC_Level = 0<<5
-            #CMD= Command_MAC_Level | Command | Data_Type
-            #hextime = int(time.mktime(time.strptime(str(Retransmission_need_to_send), '%Y-%m-%d %H:%M:%S')))
-            #sensor_data = binascii.hexlify(struct.pack(Endian + 'BLB', CMD, hextime, Time_interval))
+            CMD = int(Retransmission_need_to_send[0:2],16)
+            tmp_data = Retransmission_need_to_send[2:]
+            recv_MAC_Level = CMD>>5
+            if MAC_Level != recv_MAC_Level:
+                CMD = (MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
+            cmd_hex_data = binascii.hexlify(struct.pack(Endian + 'B', CMD))
+            print cmd_hex_data
+            sensor_data = str(cmd_hex_data)+tmp_data
             print sensor_data
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
@@ -507,11 +540,11 @@ def main():
             time.sleep(MY_SLEEP_INTERVAL)
             return_state = ser.readlines()
             print(return_state)
-            Data_need_to_send = None
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
                 #sended than update DB change sended flag to 1 by nick
                 update_sensor_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
+                Retransmission_need_to_send = None
             else:
                 print("Result: Send FAIL!")
         time.sleep(MY_SLEEP_INTERVAL)
