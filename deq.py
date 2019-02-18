@@ -40,6 +40,8 @@ Data_need_to_send = None
 Correction_Time_need_to_send = None
 Retransmission_need_to_send = None
 g_Frame_Count = ""
+g_Sended_Flag = ""
+g_Retransmit_Flag = ""
 Source_MAC_address = ""
 
 Nport1_ip_port = ('192.168.127.88',4001) #water meter
@@ -185,12 +187,14 @@ def get_sensor_data_from_DB(tablename):
             global Source_MAC_address
             global Retransmission_need_to_send
             global g_Frame_Count
+            global g_Sended_Flag
+            global g_Retransmit_Flag
             global Data_need_to_send
             global Correction_Time_need_to_send
             if tablename == 'sensordata':
                 print "tablename == sensordata"
                 try:
-                    sql = "select sended_flag, raw_data, source_mac_address, frame_count from sensordata WHERE sended_flag='0' limit 1"
+                    sql = "select sended_flag, retransmit_flag, raw_data, source_mac_address, frame_count from sensordata WHERE sended_flag='0' or retransmit_flag='1' limit 1"
                     cursor.execute(sql)
                     #print cursor.rowcount
                     if(cursor.rowcount>0):
@@ -198,9 +202,13 @@ def get_sensor_data_from_DB(tablename):
                             Data_need_to_send = row["raw_data"]
                             Source_MAC_address = row["source_mac_address"]
                             g_Frame_Count = row["frame_count"]
+                            g_Sended_Flag = row["sended_flag"]
+                            g_Retransmit_Flag = row["retransmit_flag"]
                             print "Source_MAC_address: " ,Source_MAC_address
                             print "Data_need_to_send: ",Data_need_to_send
                             print "Frame Count:", g_Frame_Count
+                            print "g_Sended_Flag:", g_Sended_Flag
+                            print "g_Retransmit_Flag:", g_Retransmit_Flag
                     else:
                         print "DB return null"
                         Data_need_to_send = None
@@ -267,7 +275,12 @@ def update_sensor_data_to_DB(type, l_sensor_macAddr, l_sensor_data, l_sensor_fra
                 print("No sensor DB")
             if type == 1:
                 print("update sensordata table")
-                sql = "update sensordata set sended_flag=1 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                if g_Sended_Flag ==0:
+                    print("update sensordata table g_Sended_Flag ==0")
+                    sql = "update sensordata set sended_flag=1 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                elif g_Retransmit_Flag ==1:
+                    print("update sensordata table g_Retransmit_Flag ==1")
+                    sql = "update sensordata set retransmit_flag=0 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
 
@@ -325,6 +338,8 @@ def main():
     global Data_need_to_send
     global Retransmission_need_to_send
     global Correction_Time_need_to_send
+    global g_Sended_Flag
+    global g_Retransmit_Flag
     # start:
     # make queue file folder
     if not os.path.exists(MY_MQTT_QUEUE_FILE_PATH):
@@ -403,6 +418,10 @@ def main():
             recv_MAC_Level = CMD>>5
             if MAC_Level != recv_MAC_Level:
                 CMD = (MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
+            if g_Retransmit_Flag ==1:
+                print "g_Retransmit_Flag ==1 change command"
+                CMD = (CMD | 1<<3) | (CMD & ~(1<<2))
+                print "Retransmit CMD:",CMD
             cmd_hex_data = binascii.hexlify(struct.pack(Endian + 'B', CMD))
             print cmd_hex_data
             sensor_data = str(cmd_hex_data)+tmp_data
@@ -413,19 +432,20 @@ def main():
             if sensor_macAddr[0:2] in my_dict_appskey:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
+                print("sensor_data:" + sensor_data )
+                data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
+                data_sending = str(data_sending)
+                print data_sending
+
+                ser.flushInput()
+                ser.flushOutput()
+                ser.write(data_sending)
+                time.sleep(MY_SLEEP_INTERVAL)
+                return_state = ser.readlines()
+                print(return_state)
             else:
                 print('Not in ABP Group Config Rule, so give up')
 
-            print("sensor_data:" + sensor_data )
-            data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
-            data_sending = str(data_sending)
-            print data_sending
-            ser.flushInput()
-            ser.flushOutput()
-            ser.write(data_sending)
-            time.sleep(MY_SLEEP_INTERVAL)
-            return_state = ser.readlines()
-            print(return_state)
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
                 #sended than update DB change sended flag to 1 by nick
@@ -484,20 +504,20 @@ def main():
             if sensor_macAddr[0:2] in my_dict_appskey:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
+                print("sensor_data:" + sensor_data )
+                data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
+                data_sending = str(data_sending)
+                print data_sending
+                #update DB sended flag here when sended and return status = "tx done        " bu nick
+                ser.flushInput()
+                ser.flushOutput()
+                ser.write(data_sending)
+                time.sleep(MY_SLEEP_INTERVAL)
+                return_state = ser.readlines()
+                print(return_state)
             else:
                 print('Not in ABP Group Config Rule, so give up')
 
-            print("sensor_data:" + sensor_data )
-            data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
-            data_sending = str(data_sending)
-            print data_sending
-            #update DB sended flag here when sended and return status = "tx done" bu nick
-            ser.flushInput()
-            ser.flushOutput()
-            ser.write(data_sending)
-            time.sleep(MY_SLEEP_INTERVAL)
-            return_state = ser.readlines()
-            print(return_state)
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
                 #sended than update DB change sended flag to 1 by nick
@@ -527,19 +547,19 @@ def main():
             if sensor_macAddr[0:2] in my_dict_appskey:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
+                print("sensor_data:" + sensor_data )
+                data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
+                data_sending = str(data_sending)
+                print data_sending
+                ser.flushInput()
+                ser.flushOutput()
+                ser.write(data_sending)
+                time.sleep(MY_SLEEP_INTERVAL)
+                return_state = ser.readlines()
+                print(return_state)
             else:
                 print('Not in ABP Group Config Rule, so give up')
 
-            print("sensor_data:" + sensor_data )
-            data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
-            data_sending = str(data_sending)
-            print data_sending
-            ser.flushInput()
-            ser.flushOutput()
-            ser.write(data_sending)
-            time.sleep(MY_SLEEP_INTERVAL)
-            return_state = ser.readlines()
-            print(return_state)
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
                 #sended than update DB change sended flag to 1 by nick
