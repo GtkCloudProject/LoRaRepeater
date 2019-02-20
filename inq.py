@@ -365,10 +365,10 @@ def main():
                         except:
                             Water_float =0
                         try:
-                            Water_int = int(float(Water))
+                            Water_int = int(float(Water_float))
                         except:
                             Water_int =0
-                        Water_decimal = int((Water_float - Water_int)*100)
+                        Water_decimal = int(round((Water_float - Water_int),2)*100)
                         Command = 0<<2
                         Data_Type = 1<<0
                         Command_MAC_Level = MAC_Level<<5
@@ -396,16 +396,24 @@ def main():
                         print "received Rain:"+str(recvdata)
                         Rain = recvdata[recvdata.find(dot_str) + 1:]
                         try:
-                           Rain_int = int(Rain)
-                        except ValueError:
-                           Rain_int = 0
+                            Rain_float = round(float(Rain),2)
+                            print "Rain_float:",Rain_float
+                        except:
+                            Rain_float =0
+                        try:
+                            Rain_int = int(float(Rain_float))
+                            print "Rain_int:",Rain_int
+                        except:
+                            Rain_int =0
+                        Rain_decimal = int(round((Rain_float - Rain_int),2)*100)
+                        print "Rain_decimal:",Rain_decimal
                         Command = 0<<2
                         Data_Type = 1<<1
                         Command_MAC_Level = MAC_Level<<5
                         Time = int(time.time())
                         #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
-                        Rain_format = binascii.hexlify(struct.pack(Endian + 'BLH', CMD, Time, Rain_int))
+                        Rain_format = binascii.hexlify(struct.pack(Endian + 'BLHB', CMD, Time, Rain_int, Rain_decimal))
                         print Rain_format
                         if Sensor_Count == 9999:
                             Sensor_Count = 1

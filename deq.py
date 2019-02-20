@@ -7,7 +7,7 @@ import time
 import serial
 import logging
 import pymysql.cursors
-import socket
+import socket,select
 import struct
 import binascii
 from logging.handlers import RotatingFileHandler
@@ -52,14 +52,6 @@ Diagnosis_PC_ip_port = ('192.168.127.99',4005)
 Application_Server_ip_port = ('192.168.127.101',4006)
 Microwave_PC_ip_port = ('192.168.127.102',4007)
 
-Nport1_connect_status = False #water meter
-Nport2_connect_status = False #rain meter
-Nport3_connect_status = False #radio
-Nport4_connect_status = False #display
-Diagnosis_PC_connect_status = False
-Application_Server_connect_status = False
-Microwave_PC_connect_status = False
-
 my_dict_appskey = {}
 my_dict_nwkskey = {}
 
@@ -73,13 +65,6 @@ def TCP_connect(name):
     global sock3
     global sock4
     global sock5
-    global Diagnosis_PC_connect_status
-    global Application_Server_connect_status
-    global Microwave_PC_connect_status
-    global Nport1_connect_status
-    global Nport2_connect_status
-    global Nport3_connect_status
-    global Nport4_connect_status
     if name == Diagnosis_PC_ip_port:
         try:
             sock1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -88,10 +73,9 @@ def TCP_connect(name):
             sock1.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock1.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock1.connect(Diagnosis_PC_ip_port)
-            Diagnosis_PC_connect_status = True
             print "sock1 Diagnosis PC connect"
         except:
-            print "sock1 error"
+            print "sock1 Diagnosis PC connect error"
             pass
     elif name == Application_Server_ip_port:
         try:
@@ -101,10 +85,9 @@ def TCP_connect(name):
             sock2.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock2.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock2.connect(Application_Server_ip_port)
-            Application_Server_connect_status = True
             print "sock2 Application Server connect"
         except:
-            print"sock2 error"
+            print"sock2 Application Server connect error"
             pass
     elif name == Microwave_PC_ip_port:
         try:
@@ -114,9 +97,9 @@ def TCP_connect(name):
             sock3.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock3.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock3.connect(Microwave_PC_ip_port)
-            Microwave_PC_connect_status = True
             print "sock3 Microwave PC connect"
         except:
+            print"sock3 Microwave PC connect error"
             pass
     elif name == Nport3_ip_port:
         try:
@@ -126,9 +109,9 @@ def TCP_connect(name):
             sock4.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock4.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock4.connect(Nport3_ip_port)
-            Nport3_connect_status = True
             print "sock4 Radio connect"
         except:
+            print"sock4 Radio connect error"
             pass
     elif name == Nport4_ip_port:
         try:
@@ -138,9 +121,9 @@ def TCP_connect(name):
             sock5.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock5.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock5.connect(Nport4_ip_port)
-            Nport4_connect_status = True
             print "sock5 Display connect"
         except:
+            print"sock5 Display connect error"
             pass
 
 def build_app_group_table():
@@ -283,11 +266,6 @@ def update_sensor_data_to_DB(type, l_sensor_macAddr, l_sensor_data, l_sensor_fra
                     sql = "update sensordata set retransmit_flag=0 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
-
-                #tmp_time = time.localtime(int(l_sensor_data[2:10],16))
-                #sql = "update sensordata set time='%s' where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s' AND sended_flag=1" % (time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
-                #cursor.execute(sql)
-                #connection.commit()
             elif type == 2:
                 print("update correctiontime table")
                 sql = "update correctiontime set sended_flag=1 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
@@ -402,12 +380,57 @@ def main():
     time_dict= {}
     TCP_connect(Diagnosis_PC_ip_port)
     TCP_connect(Application_Server_ip_port)
+    TCP_connect(Microwave_PC_ip_port)
+    TCP_connect(Nport3_ip_port)
+    TCP_connect(Nport4_ip_port)
 
-    #TCP_connect(PC_ip_port)
-    #TCP_connect(Nport3_ip_port)
-    #TCP_connect(Nport4_ip_port)
-
-    while 1:
+    while True:
+        try:
+            #Await a read event
+            rlist, wlist, elist = select.select( [sock1, sock2, sock3, sock4, sock5], [], [], 5)
+        except select.error:
+            print "select error"
+        for sock in rlist:
+            if sock1 == sock: #Diagnosis_PC
+                try:
+                    recvdata, addr = sock.recvfrom(1024)
+                    if not recvdata:
+                        print "sock1 Diagnosis_PC disconnect"
+                        TCP_connect(Diagnosis_PC_ip_port)
+                except socket.error:
+                    print "sock1 Diagnosis_PC socket error"
+            elif sock2 == sock: #Application Server
+                try:
+                    recvdata, addr = sock.recvfrom(1024)
+                    if not recvdata:
+                        print "sock2 Application Server disconnect"
+                        TCP_connect(Application_Server_ip_port)
+                except socket.error:
+                    print "sock2 Application Server socket error"
+            elif sock3 == sock: #Microwave PC
+                try:
+                    recvdata, addr = sock.recvfrom(1024)
+                    if not recvdata:
+                        print "sock3 Microwave PC disconnect"
+                        TCP_connect(Microwave_PC_ip_port)
+                except socket.error:
+                    print "sock3 Microwave PC socket error"
+            elif sock4 == sock: #Radio
+                try:
+                    recvdata, addr = sock.recvfrom(1024)
+                    if not recvdata:
+                        print "sock4 Radio disconnect"
+                        TCP_connect(Nport3_ip_port)
+                except socket.error:
+                    print "sock4 Radio socket error"
+            elif sock5 == sock: #Display
+                try:
+                    recvdata, addr = sock.recvfrom(1024)
+                    if not recvdata:
+                        print "sock5 Display disconnect"
+                        TCP_connect(Nport4_ip_port)
+                except socket.error:
+                    print "sock5 Display socket error"
         tablename = 'sensordata'
         get_sensor_data_from_DB(tablename)
         if Data_need_to_send != None:
@@ -453,33 +476,27 @@ def main():
                 Data_need_to_send = None
             else:
                 print("Result: Send FAIL!")
-
-            #send data to Application Server that if connected
+            #Send sensor data to application server or Microwave PC or Radio
             try:
-                if (Application_Server_connect_status == True):
-                    sock2.send(sensor_macAddr+sensor_data)
+                print("Send sensor data to Application Server")
+                sock2.send(sensor_macAddr+sensor_data)
             except socket.error:
-                print"sock2 Application_Server socket error"
+                print"sock2 Application Server socket error"
                 TCP_connect(Application_Server_ip_port)
-
-            #add Radio Send by nick
             try:
-                TCP_connect(Nport3_ip_port) #radio interface
+                print("Send sensor data to Microwave PC")
+                sock3.send(sensor_macAddr+sensor_data)
+            except socket.error:
+                print"sock3 Microwave PC socket error"
+                TCP_connect(Microwave_PC_ip_port)
+            try:
+                print("Send sensor data to Radio")
                 sock4.send(sensor_macAddr+sensor_data)
             except socket.error:
                 print"sock4 Radio socket error"
                 TCP_connect(Nport3_ip_port)
         else:
-             print("Waiting for incoming queue")
-
-        #add Diagnosis_PC Send by nick
-        try:
-            if (Diagnosis_PC_connect_status == True):
-                sock1.send("Repeater Status OK")
-        except socket.error:
-            print"sock1 Diagnosis_PC socket error"
-            TCP_connect(Diagnosis_PC_ip_port)
-
+            print("Waiting for incoming queue")
         tablename = 'correctiontime'
         get_sensor_data_from_DB(tablename)
         if Correction_Time_need_to_send != None:
@@ -567,6 +584,13 @@ def main():
                 Retransmission_need_to_send = None
             else:
                 print("Result: Send FAIL!")
+        #Diagnosis_PC Send Repeater Status
+        try:
+            print("Send sensor data to Diagnosis PC")
+            sock1.send("Repeater Status OK")
+        except socket.error:
+            print"sock1 Diagnosis_PC socket error"
+            TCP_connect(Diagnosis_PC_ip_port)
         time.sleep(MY_SLEEP_INTERVAL)
 if __name__ == "__main__":
     main()
