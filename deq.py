@@ -523,7 +523,7 @@ def main():
                 CMD = (Self_MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
             if g_Retransmit_Flag ==1:
                 print "g_Retransmit_Flag ==1 change command"
-                CMD = (CMD | 1<<3) | (CMD & ~(1<<2))
+                CMD = (CMD & ~(1<<2)) | (CMD | 1<<3) | (CMD & ~(1<<4))
                 print "Retransmit CMD:",CMD
             cmd_hex_data = binascii.hexlify(struct.pack(Endian + 'B', CMD))
             sensor_data = str(cmd_hex_data)+tmp_data

@@ -156,7 +156,7 @@ def connect_DB_select_data(type, sensor_mac, time, time_interval, sensor_data, s
                 cursor.execute(sql)
                 connection.commit()
             elif type == 2:
-                sql = "insert into sensordata (source_mac_address, time, raw_data, frame_count, retransmit_flag) values('%s', '%s', '%s', '%s', 1) ON DUPLICATE KEY UPDATE retransmit_flag =1" % (sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), sensor_data, sensor_count)
+                sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count, sended_flag, retransmit_flag) values('%s', '%s', '%s', '%s', 1, 1) ON DUPLICATE KEY UPDATE retransmit_flag =1" % (sensor_mac, time, sensor_data, sensor_count)
                 cursor.execute(sql)
                 connection.commit()
             if(cursor.rowcount>0):
