@@ -34,7 +34,7 @@ Application_Server_ip_port = ('192.168.127.101',4006)
 Microwave_PC_ip_port = ('192.168.127.102',4007)
 
 MAC_Address=0
-MAC_Level=0
+Self_MAC_Level=0
 Sensor_Count=0
 Endian = '>' #big-endian
 
@@ -48,19 +48,19 @@ def get_lora_module_addr(dev_path):
         #time.sleep(3)
         check_my_dongle = str(ser.readlines())
         #print check_my_dongle
-        global MAC_Address, MAC_Level
+        global MAC_Address, Self_MAC_Level
         MAC_Address = check_my_dongle[check_my_dongle.find(REPLY_STRING) + 10: check_my_dongle.find(REPLY_STRING) + 18]
         print "MAC_Address:",MAC_Address
         if(MAC_Address[4:5]=='1'):
-            MAC_Level = 1
+            Self_MAC_Level = 1
         elif (MAC_Address[4:5]=='2'):
-            MAC_Level = 2
+            Self_MAC_Level = 2
         elif (MAC_Address[4:5]=='3'):
-            MAC_Level = 3
+            Self_MAC_Level = 3
         elif (MAC_Address[4:5]=='4'):
-            MAC_Level = 4
+            Self_MAC_Level = 4
         else:
-            MAC_Level = 0
+            Self_MAC_Level = 0
             print "MAC Level Error reset to 0"
         #my_logger.info('My USB dongle checked')
         return ser
@@ -133,7 +133,7 @@ def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #typ
     finally:
         print("connection close!")
         connection.close()
-def connect_DB_select_data(time, time_interval):
+def connect_DB_select_data(type, sensor_mac, time, time_interval, sensor_data, sensor_count): #type 1: select data to retransmit 2: if doesn't exist select data then insert new retransmit data
     # Connect to the database
     connection = pymysql.connect(host='localhost',
                                  user='root',
@@ -147,13 +147,18 @@ def connect_DB_select_data(time, time_interval):
             # Read a single record
             # sql = "SELECT `id`, `password` FROM `users` WHERE `email`=%s"
             print("connect to DB select data")
-
             sql = "create database if not exists sensor"
             cursor.execute(sql)
             cursor.execute("USE sensor")
-            sql = "UPDATE sensordata SET retransmit_flag =1 where time >='%s' and time <= DATE_ADD('%s', INTERVAL '%s' MINUTE)" % (time, time, time_interval)
-            cursor.execute(sql)
-            connection.commit()
+            print "sensor_mac:",sensor_mac
+            if type == 1:
+                sql = "UPDATE sensordata SET retransmit_flag =1 where time >='%s' and time <= DATE_ADD('%s', INTERVAL '%s' MINUTE) and source_mac_address='%s'" % (time, time, time_interval, sensor_mac)
+                cursor.execute(sql)
+                connection.commit()
+            elif type == 2:
+                sql = "insert into sensordata (source_mac_address, time, raw_data, frame_count, retransmit_flag) values('%s', '%s', '%s', '%s', 1) ON DUPLICATE KEY UPDATE retransmit_flag =1" % (sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), sensor_data, sensor_count)
+                cursor.execute(sql)
+                connection.commit()
             if(cursor.rowcount>0):
                 print "Result Count:",cursor.rowcount
             else:
@@ -181,41 +186,41 @@ def on_message(client, userdata, msg):
         sensor_data = json.loads(json_data)[0]['data']
         sensor_count = json.loads(json_data)[0]['frameCnt']
         nFrameCnt = json.loads(json_data)[0]['frameCnt']
-
-        print('Data is:')
-        print(sensor_data)
+        print"Data is:",sensor_data
         Command = int(sensor_data[0:2],16)
-        print "Command:",Command
-        mac_level = Command>>5
-        print "mac_level:",mac_level
+        recv_mac_level = Command>>5
         CMD = (Command>>2) & ~( 1<<3 | 1<<4 | 1<<5)
-        print "CMD:",CMD
         Data_type = Command & ~( 1<<2 | 1<<3 | 1<<4 | 1<<5 | 1<<6 | 1<<7 )
-        print "Data_type:",Data_type
-        print('now frameCnt is:')
-        print(sensor_count)
 # Store data to DB
 # Check the command if not sensor data do not insert to DB
-        if Data_type == 1 or Data_type == 2:
+        if CMD == 0 and (Data_type == 1 or Data_type == 2):
             print"Receive Sensor data from lora"
-            if MAC_Level >= mac_level:
+            if Self_MAC_Level >= recv_mac_level:
                 print("Ready to put sensor data to DB")
                 connect_DB_put_data(3, sensor_mac[8:16], sensor_data, sensor_count)
         elif Data_type == 0 and CMD == 1:
             print("Receive Correction Lora Packet")
-            #replace system time here by nick
-            correcttime = sensor_data[2:10]
-            print "correcttime:",correcttime
-            tmp_time = time.localtime(int(correcttime,16))
-            #print "tmp_time:",tmp_time
-            strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
-            print "strtime:",strtime
-            os.system('date -s "%s"' % strtime)
-            #pepare correction time ack
-            if MAC_Level <= mac_level:
-                print("Ready to put correction time data to DB")
-                connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count)
-                connect_DB_put_data(4, MAC_Address, sensor_data, sensor_count)
+            print "MAC_Address:",MAC_Address
+            print "sensor_mac[8:16]:",sensor_mac[8:16]
+            if 'ffffff' in sensor_mac[8:16] or 'FFFFFF' in sensor_mac[8:16]:
+                print("Broadcast Correction Packet")
+                #replace system time here by nick
+                correcttime = sensor_data[2:10]
+                print "correcttime:",correcttime
+                tmp_time = time.localtime(int(correcttime,16))
+                #print "tmp_time:",tmp_time
+                strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
+                print "strtime:",strtime
+                os.system('date -s "%s"' % strtime)
+                #pepare correction time ack
+                if Self_MAC_Level <= recv_mac_level:
+                    print("Ready to put correction time data to DB")
+                    connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count) #forward broadcast correction time
+                    connect_DB_put_data(4, MAC_Address, sensor_data, sensor_count) #send ack correction
+            else:
+                if Self_MAC_Level >= recv_mac_level:
+                    print("Forward Correction 'ACK' Packet")
+                    connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count)#forward ack correction
         elif Data_type == 0 and CMD == 2:
             print("Receive Retransmit Lora Packet")
             #select witch sensor data need to retransmit
@@ -225,12 +230,24 @@ def on_message(client, userdata, msg):
             print "strtime:",strtime
             time_interval = int(sensor_data[10:12],16)
             print "time_interval:",time_interval
-            if MAC_Level <= mac_level:
+            if Self_MAC_Level <= recv_mac_level:
                 print("Ready to put retransmit data to DB")
                 connect_DB_put_data(5, sensor_mac[8:16], sensor_data, sensor_count)
             if sensor_mac[8:16] == MAC_Address:
                 print("Select Re-transmit data from DB")
-                connect_DB_select_data(strtime, time_interval)
+                connect_DB_select_data(1, sensor_mac[8:16], strtime, time_interval, sensor_data , sensor_count)
+        elif CMD == 2 and (Data_type == 1 or Data_type == 2):
+            print"Receive Retransmit ACK data from lora"
+            if Self_MAC_Level > recv_mac_level:
+                print("Ready to put Retransmit sensor data to DB")
+                #select witch sensor data need to retransmit
+                retransmit_time = sensor_data[2:10]
+                tmp_time = time.localtime(int(retransmit_time,16))
+                strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
+                print "strtime:",strtime
+                time_interval = 0
+                #print "time_interval:",time_interval
+                connect_DB_select_data(2, sensor_mac[8:16], strtime, time_interval, sensor_data , sensor_count)
         else:
             print("not sensor data lora packet")
     except:
@@ -371,7 +388,7 @@ def main():
                         Water_decimal = int(round((Water_float - Water_int),2)*100)
                         Command = 0<<2
                         Data_Type = 1<<0
-                        Command_MAC_Level = MAC_Level<<5
+                        Command_MAC_Level = Self_MAC_Level<<5
                         Time = int(time.time())
                         #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
@@ -409,7 +426,7 @@ def main():
                         print "Rain_decimal:",Rain_decimal
                         Command = 0<<2
                         Data_Type = 1<<1
-                        Command_MAC_Level = MAC_Level<<5
+                        Command_MAC_Level = Self_MAC_Level<<5
                         Time = int(time.time())
                         #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
@@ -471,7 +488,7 @@ def main():
                                     print strtime
                                     time_interval = int(recvdata[18:20], 16)
                                     print "time_interval: ",time_interval
-                                    connect_DB_select_data(strtime, time_interval)
+                                    connect_DB_select_data(1, retransmit_mac_address, strtime, time_interval, 0, 0)
                                 else:
                                     print "Do not need to retransmit"
                                 data = recvdata[8:20]

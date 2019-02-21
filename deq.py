@@ -55,7 +55,7 @@ Microwave_PC_ip_port = ('192.168.127.102',4007)
 my_dict_appskey = {}
 my_dict_nwkskey = {}
 
-MAC_Level=0
+Self_MAC_Level=0
 Endian = '>' #big-endian
 
 #add by nick
@@ -290,19 +290,19 @@ def get_lora_module_addr(dev_path):
         #time.sleep(3)
         check_my_dongle = str(ser.readlines())
         #print check_my_dongle
-        global MAC_Address, MAC_Level
+        global MAC_Address, Self_MAC_Level
         MAC_Address = check_my_dongle[check_my_dongle.find(REPLY_STRING) + 10: check_my_dongle.find(REPLY_STRING) + 18]
         print "MAC_Address:",MAC_Address
         if(MAC_Address[4:5]=='1'):
-            MAC_Level = 1
+            Self_MAC_Level = 1
         elif (MAC_Address[4:5]=='2'):
-            MAC_Level = 2
+            Self_MAC_Level = 2
         elif (MAC_Address[4:5]=='3'):
-            MAC_Level = 3
+            Self_MAC_Level = 3
         elif (MAC_Address[4:5]=='4'):
-            MAC_Level = 4
+            Self_MAC_Level = 4
         else:
-            MAC_Level = 0
+            Self_MAC_Level = 0
             print "MAC Level Error reset to 0"
         #my_logger.info('My USB dongle checked')
         return ser
@@ -439,16 +439,14 @@ def main():
             CMD = int(Data_need_to_send[0:2],16)
             tmp_data = Data_need_to_send[2:]
             recv_MAC_Level = CMD>>5
-            if MAC_Level != recv_MAC_Level:
-                CMD = (MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
+            if Self_MAC_Level != recv_MAC_Level:
+                CMD = (Self_MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
             if g_Retransmit_Flag ==1:
                 print "g_Retransmit_Flag ==1 change command"
                 CMD = (CMD | 1<<3) | (CMD & ~(1<<2))
                 print "Retransmit CMD:",CMD
             cmd_hex_data = binascii.hexlify(struct.pack(Endian + 'B', CMD))
-            print cmd_hex_data
             sensor_data = str(cmd_hex_data)+tmp_data
-            print sensor_data
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
@@ -459,13 +457,12 @@ def main():
                 data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
                 data_sending = str(data_sending)
                 print data_sending
-
                 ser.flushInput()
                 ser.flushOutput()
                 ser.write(data_sending)
                 time.sleep(MY_SLEEP_INTERVAL)
                 return_state = ser.readlines()
-                print(return_state)
+                #print(return_state)
             else:
                 print('Not in ABP Group Config Rule, so give up')
 
@@ -504,18 +501,14 @@ def main():
             #convert Correction_Time_need_to_send to hex time
             #sensor_data = Correction_Time_need_to_send
             CMD = int(Correction_Time_need_to_send[0:2],16)
-            print"CMD:",CMD
             tmp_data = Correction_Time_need_to_send[2:]
             recv_MAC_Level = CMD>>5
             print "recv_MAC_Level:",recv_MAC_Level
-            if MAC_Level != recv_MAC_Level:
-                CMD = (MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
+            if Self_MAC_Level != recv_MAC_Level:
+                CMD = (Self_MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
             cmd_hex_data = binascii.hexlify(struct.pack(Endian + 'B', CMD))
-            print cmd_hex_data
             sensor_data = str(cmd_hex_data)+tmp_data
-            print sensor_data
             sensor_macAddr = Source_MAC_address
-            print sensor_macAddr
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
             if sensor_macAddr[0:2] in my_dict_appskey:
@@ -531,7 +524,7 @@ def main():
                 ser.write(data_sending)
                 time.sleep(MY_SLEEP_INTERVAL)
                 return_state = ser.readlines()
-                print(return_state)
+                #print(return_state)
             else:
                 print('Not in ABP Group Config Rule, so give up')
 
@@ -542,6 +535,27 @@ def main():
                 Correction_Time_need_to_send = None
             else:
                 print("Result: Send FAIL!")
+
+            if 'ffffff' not in sensor_macAddr and 'FFFFFF' not in sensor_macAddr:
+                #Send correctiontime ACK to application server or Microwave PC or Radio
+                try:
+                    print("Send correctiontime ACK to Application Server")
+                    sock2.send(sensor_macAddr+sensor_data)
+                except socket.error:
+                    print"sock2 Application Server socket error"
+                    TCP_connect(Application_Server_ip_port)
+                try:
+                    print("Send correctiontime ACK to Microwave PC")
+                    sock3.send(sensor_macAddr+sensor_data)
+                except socket.error:
+                    print"sock3 Microwave PC socket error"
+                    TCP_connect(Microwave_PC_ip_port)
+                try:
+                    print("Send correctiontime ACK to Radio")
+                    sock4.send(sensor_macAddr+sensor_data)
+                except socket.error:
+                    print"sock4 Radio socket error"
+                    TCP_connect(Nport3_ip_port)
         #time.sleep(MY_SLEEP_INTERVAL)
 
         tablename = 'retransmission'
@@ -552,12 +566,10 @@ def main():
             CMD = int(Retransmission_need_to_send[0:2],16)
             tmp_data = Retransmission_need_to_send[2:]
             recv_MAC_Level = CMD>>5
-            if MAC_Level != recv_MAC_Level:
-                CMD = (MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
+            if Self_MAC_Level != recv_MAC_Level:
+                CMD = (Self_MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
             cmd_hex_data = binascii.hexlify(struct.pack(Endian + 'B', CMD))
-            print cmd_hex_data
             sensor_data = str(cmd_hex_data)+tmp_data
-            print sensor_data
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
@@ -573,7 +585,7 @@ def main():
                 ser.write(data_sending)
                 time.sleep(MY_SLEEP_INTERVAL)
                 return_state = ser.readlines()
-                print(return_state)
+                #print(return_state)
             else:
                 print('Not in ABP Group Config Rule, so give up')
 
