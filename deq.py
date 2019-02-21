@@ -10,6 +10,7 @@ import pymysql.cursors
 import socket,select
 import struct
 import binascii
+import subprocess
 from logging.handlers import RotatingFileHandler
 
 USB_DEV_ARRAY = ["/dev/ttyS0"]
@@ -58,6 +59,78 @@ my_dict_nwkskey = {}
 Self_MAC_Level=0
 Endian = '>' #big-endian
 
+STATUS_OK="OK"
+STATUS_FAIL="FAIL"
+
+#Nport socket status
+g_Nport1_ip_port_status = 0
+g_Nport2_ip_port_status = 0
+g_Nport3_ip_port_status = 0
+g_Nport4_ip_port_status = 0
+
+
+#To show device I/O status
+def report_status_to_diagnosis_pc():
+    global sock1
+    global g_Nport1_ip_port_status
+    global g_Nport2_ip_port_status
+
+    try:
+        print("Send sensor data to Diagnosis PC")
+        sock1.send("== I/O Status Reporting ==\n")
+
+        # N port port 1
+        sub_p = subprocess.Popen("cat /tmp/Nport1_status", stdout=subprocess.PIPE, shell=True)
+        (nport1_status, err) = sub_p.communicate()
+        g_Nport1_ip_port_status = int(nport1_status)
+        if g_Nport1_ip_port_status == 0:
+            io_status = "N Port Port 1 Status %s \n" %(STATUS_OK)
+            print(io_status)
+            sock1.send(io_status)
+        else:
+            io_status = "N Port Port 1 Status %s \n" %(STATUS_FAIL)
+            print(io_status)
+            sock1.send(io_status)
+
+        # N port port 2
+        sub_p = subprocess.Popen("cat /tmp/Nport2_status", stdout=subprocess.PIPE, shell=True)
+        (nport2_status, err) = sub_p.communicate()
+        g_Nport2_ip_port_status = int(nport2_status)
+        if g_Nport2_ip_port_status == 0:
+            io_status = "N Port Port 2 Status %s \n" %(STATUS_OK)
+            print(io_status)
+            sock1.send(io_status)
+        else:
+            io_status = "N Port Port 2 Status %s \n" %(STATUS_FAIL)
+            print(io_status)
+            sock1.send(io_status)
+
+        # N port port 3
+        if g_Nport3_ip_port_status == 0:
+            io_status = "N Port Port 3 Status %s \n" %(STATUS_OK)
+            print(io_status)
+            sock1.send(io_status)
+        else:
+            io_status = "N Port Port 3 Status %s \n" %(STATUS_FAIL)
+            print(io_status)
+            sock1.send(io_status)
+
+        # N port port 4
+        if g_Nport4_ip_port_status == 0:
+            io_status = "N Port Port 4 Status %s \n" %(STATUS_OK)
+            print(io_status)
+            sock1.send(io_status)
+        else:
+            io_status = "N Port Port 4 Status %s \n" %(STATUS_FAIL)
+            print(io_status)
+            sock1.send(io_status)
+
+        sock1.send("\n")
+
+    except socket.error:
+        print"sock1 Diagnosis_PC socket error"
+        TCP_connect(Diagnosis_PC_ip_port)
+
 #add by nick
 def TCP_connect(name):
     global sock1
@@ -65,6 +138,9 @@ def TCP_connect(name):
     global sock3
     global sock4
     global sock5
+    global g_Nport3_ip_port_status
+    global g_Nport4_ip_port_status
+
     if name == Diagnosis_PC_ip_port:
         try:
             sock1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -110,8 +186,10 @@ def TCP_connect(name):
             sock4.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock4.connect(Nport3_ip_port)
             print "sock4 Radio connect"
+            g_Nport3_ip_port_status = 0
         except:
             print"sock4 Radio connect error"
+            g_Nport3_ip_port_status = -1
             pass
     elif name == Nport4_ip_port:
         try:
@@ -122,8 +200,10 @@ def TCP_connect(name):
             sock5.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock5.connect(Nport4_ip_port)
             print "sock5 Display connect"
+            g_Nport4_ip_port_status = 0
         except:
             print"sock5 Display connect error"
+            g_Nport4_ip_port_status = -1
             pass
 
 def build_app_group_table():
@@ -596,13 +676,10 @@ def main():
                 Retransmission_need_to_send = None
             else:
                 print("Result: Send FAIL!")
-        #Diagnosis_PC Send Repeater Status
-        try:
-            print("Send sensor data to Diagnosis PC")
-            sock1.send("Repeater Status OK")
-        except socket.error:
-            print"sock1 Diagnosis_PC socket error"
-            TCP_connect(Diagnosis_PC_ip_port)
+
+        #To send LoRa repeater I/O status to  Diagnosis PC
+        report_status_to_diagnosis_pc()
+
         time.sleep(MY_SLEEP_INTERVAL)
 if __name__ == "__main__":
     main()

@@ -265,11 +265,14 @@ def TCP_connect(name):
             sock1.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
             sock1.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock1.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
-
             sock1.connect(Nport1_ip_port)
             print ("sock1 Water Meter connect")
+            os.system("echo \"0\" > /tmp/Nport1_status")
+            os.system("sync")
         except:
             print("sock1 Water Meter error")
+            os.system("echo \"-1\" > /tmp/Nport1_status")
+            os.system("sync")
             pass
     elif name == Nport2_ip_port:
         try:
@@ -280,8 +283,12 @@ def TCP_connect(name):
             sock2.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock2.connect(Nport2_ip_port)
             print ("sock2 Rain connect")
+            os.system("echo \"0\" > /tmp/Nport2_status")
+            os.system("sync")
         except:
             print("sock2 Rain Meter error")
+            os.system("echo \"-1\" > /tmp/Nport2_status")
+            os.system("sync")
             pass
     elif name == Application_Server_ip_port:
         try:
