@@ -102,12 +102,14 @@ def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #typ
             SourceMACAddress = MAC_Address
             if type == 1:
                 print("parameter = Water")
-                sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', now(), '%s', %s)" % (SourceMACAddress, p_sensor_data, p_sensor_count)
+                tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', %s)" % (SourceMACAddress, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                 cursor.execute(sql)
                 connection.commit()
             elif type == 2:
                 print("parameter = Rain")
-                sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', now(), '%s', %s)" % (SourceMACAddress, p_sensor_data, p_sensor_count)
+                tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', %s)" % (SourceMACAddress, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                 cursor.execute(sql)
                 connection.commit()
             elif type == 3:
