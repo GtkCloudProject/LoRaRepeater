@@ -68,16 +68,44 @@ g_Nport2_ip_port_status = 0
 g_Nport3_ip_port_status = 0
 g_Nport4_ip_port_status = 0
 
+#LoRa check flag
+g_lora_check_flag = 0
 
 #To show device I/O status
-def report_status_to_diagnosis_pc():
+def report_status_to_diagnosis_pc(ser):
     global sock1
     global g_Nport1_ip_port_status
     global g_Nport2_ip_port_status
+    global g_lora_check_flag
 
     try:
         print("Send sensor data to Diagnosis PC")
         sock1.send("== I/O Status Reporting ==\n")
+
+        if g_lora_check_flag == 0:
+            g_lora_check_flag = 1
+            ser.flushInput()
+            ser.flushOutput()
+            ser.write("at+dtx=11,\"1234567890a\"\r\n")
+            #return_state = ser.readlines()
+            #print(return_state)
+
+        # LoRa
+        sub_p = subprocess.Popen("cat /tmp/lora_status", stdout=subprocess.PIPE, shell=True)
+        (lora_status, err) = sub_p.communicate()
+        if len(lora_status) > 0:
+            lora_status = int(lora_status)
+        else:
+            lora_status = -1
+
+        if lora_status == 0:
+            io_status = "LoRa Status %s \n" %(STATUS_OK)
+            print(io_status)
+            sock1.send(io_status)
+        else:
+            io_status = "LoRa Status %s \n" %(STATUS_FAIL)
+            print(io_status)
+            sock1.send(io_status)
 
         # N port port 1
         sub_p = subprocess.Popen("cat /tmp/Nport1_status", stdout=subprocess.PIPE, shell=True)
@@ -129,6 +157,7 @@ def report_status_to_diagnosis_pc():
 
     except socket.error:
         print"sock1 Diagnosis_PC socket error"
+        g_lora_check_flag = 0
         TCP_connect(Diagnosis_PC_ip_port)
 
 #add by nick
@@ -140,6 +169,7 @@ def TCP_connect(name):
     global sock5
     global g_Nport3_ip_port_status
     global g_Nport4_ip_port_status
+    global g_lora_check_flag
 
     if name == Diagnosis_PC_ip_port:
         try:
@@ -152,6 +182,7 @@ def TCP_connect(name):
             print "sock1 Diagnosis PC connect"
         except:
             print "sock1 Diagnosis PC connect error"
+            g_lora_check_flag = 0
             pass
     elif name == Application_Server_ip_port:
         try:
@@ -398,6 +429,8 @@ def main():
     global Correction_Time_need_to_send
     global g_Sended_Flag
     global g_Retransmit_Flag
+    global g_lora_check_flag
+
     # start:
     # make queue file folder
     if not os.path.exists(MY_MQTT_QUEUE_FILE_PATH):
@@ -476,8 +509,10 @@ def main():
                     recvdata, addr = sock.recvfrom(1024)
                     if not recvdata:
                         print "sock1 Diagnosis_PC disconnect"
+                        g_lora_check_flag = 0
                         TCP_connect(Diagnosis_PC_ip_port)
                 except socket.error:
+                    g_lora_check_flag = 0
                     print "sock1 Diagnosis_PC socket error"
             elif sock2 == sock: #Application Server
                 try:
@@ -678,7 +713,7 @@ def main():
                 print("Result: Send FAIL!")
 
         #To send LoRa repeater I/O status to  Diagnosis PC
-        report_status_to_diagnosis_pc()
+        report_status_to_diagnosis_pc(ser)
 
         time.sleep(MY_SLEEP_INTERVAL)
 if __name__ == "__main__":

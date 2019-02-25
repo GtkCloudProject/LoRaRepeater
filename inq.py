@@ -15,6 +15,7 @@ from logging.handlers import RotatingFileHandler
 
 USB_DEV_ARRAY = ["/dev/ttyS0"]
 
+LORA_VERIFY_STR = "3132333435363738393061"
 MY_MQTT_QUEUE_FILE_PATH = "/var/lora_repeater/queue/"
 MY_SENDING_FILE_PATH = "/var/lora_repeater/sending/"
 MY_SENT_FILE_PATH = "/var/lora_repeater/sent/"
@@ -254,6 +255,11 @@ def on_message(client, userdata, msg):
                 connect_DB_select_data(2, sensor_mac[8:16], strtime, time_interval, sensor_data , sensor_count)
         else:
             print("not sensor data lora packet")
+            print(sensor_data)
+            if sensor_data == LORA_VERIFY_STR:
+                os.system("echo \"0\" > /tmp/lora_status")
+                os.system("sync")
+
     except:
         print('Received a non-UTF8 msg')
 
