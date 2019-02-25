@@ -189,6 +189,8 @@ def on_message(client, userdata, msg):
         sensor_count = json.loads(json_data)[0]['frameCnt']
         nFrameCnt = json.loads(json_data)[0]['frameCnt']
         print"Data is:",sensor_data
+        Data_Len = len(sensor_data)
+        print"Data_Len is:",Data_Len
         Command = int(sensor_data[0:2],16)
         recv_mac_level = Command>>5
         CMD = (Command>>2) & ~( 1<<3 | 1<<4 | 1<<5)
@@ -223,7 +225,7 @@ def on_message(client, userdata, msg):
                 if Self_MAC_Level >= recv_mac_level:
                     print("Forward Correction 'ACK' Packet")
                     connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count)#forward ack correction
-        elif Data_type == 0 and CMD == 2:
+        elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 12:
             print("Receive Retransmit Lora Packet")
             #select witch sensor data need to retransmit
             retransmit_time = sensor_data[2:10]
@@ -238,7 +240,7 @@ def on_message(client, userdata, msg):
             if sensor_mac[8:16] == MAC_Address:
                 print("Select Re-transmit data from DB")
                 connect_DB_select_data(1, sensor_mac[8:16], strtime, time_interval, sensor_data , sensor_count)
-        elif CMD == 2 and (Data_type == 1 or Data_type == 2):
+        elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 16:
             print"Receive Retransmit ACK data from lora"
             if Self_MAC_Level > recv_mac_level:
                 print("Ready to put Retransmit sensor data to DB")
@@ -482,24 +484,11 @@ def main():
                                 connect_DB_put_data(4, server_mac_address, data , Sensor_Count)
                             else:
                                 print "received correction time command but length error!!!"
-                        elif command == '08':
+                        elif command == '09' or command == '0a':
                             datalen = len(recvdata)
                             if datalen == 20:
                                 print "received retransmit command"
                                 retransmit_mac_address = recvdata[0:8]
-                                print "MAC_Address:",MAC_Address
-                                print "retransmit_mac_address:",retransmit_mac_address
-                                if retransmit_mac_address == MAC_Address:
-                                    print "Prepare to transmit"
-                                    retransmit_time = recvdata[10:18]
-                                    tmp_time = time.localtime(int(retransmit_time,16))
-                                    strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
-                                    print strtime
-                                    time_interval = int(recvdata[18:20], 16)
-                                    print "time_interval: ",time_interval
-                                    connect_DB_select_data(1, retransmit_mac_address, strtime, time_interval, 0, 0)
-                                else:
-                                    print "Do not need to retransmit"
                                 data = recvdata[8:20]
                                 if Sensor_Count == 9999:
                                     Sensor_Count = 1
