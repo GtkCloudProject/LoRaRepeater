@@ -39,6 +39,27 @@ Self_MAC_Level=0
 Sensor_Count=0
 Endian = '>' #big-endian
 
+#select socket queue
+g_socket_list = []
+
+#socket flag
+g_sock1_flag = -1
+g_sock2_flag = -1
+g_sock3_flag = -1
+
+#select timeout
+SELECT_TIMEOUT = 1
+
+#To close socket
+def close_socket(sock_c):
+    global g_socket_list
+
+    sock_c.close()
+    try:
+        g_socket_list.remove(sock_c)
+    except ValueError:
+        pass
+
 #get MAC Address for serial
 def get_lora_module_addr(dev_path):
     try:
@@ -267,6 +288,9 @@ def TCP_connect(name):
     global sock1
     global sock2
     global sock3
+    global g_sock1_flag
+    global g_sock2_flag
+    global g_sock3_flag
 
     if name == Nport1_ip_port:
         try:
@@ -277,10 +301,14 @@ def TCP_connect(name):
             sock1.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock1.connect(Nport1_ip_port)
             print ("sock1 Water Meter connect")
+            g_sock1_flag = 0
+            g_socket_list.append(sock1)
             os.system("echo \"0\" > /tmp/Nport1_status")
             os.system("sync")
         except:
             print("sock1 Water Meter error")
+            g_sock1_flag = -1
+            close_socket(sock1)
             os.system("echo \"-1\" > /tmp/Nport1_status")
             os.system("sync")
             pass
@@ -293,10 +321,14 @@ def TCP_connect(name):
             sock2.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock2.connect(Nport2_ip_port)
             print ("sock2 Rain connect")
+            g_sock2_flag = 0
+            g_socket_list.append(sock2)
             os.system("echo \"0\" > /tmp/Nport2_status")
             os.system("sync")
         except:
             print("sock2 Rain Meter error")
+            g_sock2_flag = -1
+            close_socket(sock2)
             os.system("echo \"-1\" > /tmp/Nport2_status")
             os.system("sync")
             pass
@@ -309,11 +341,23 @@ def TCP_connect(name):
             sock3.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock3.connect(Application_Server_ip_port)
             print ("sock3 Application Server connect")
+            g_sock3_flag = 0
+            g_socket_list.append(sock3)
         except:
             print("sock3 Application Server connect error")
+            g_sock3_flag = -1
+            close_socket(sock3)
             pass
 
 def main():
+    global sock1
+    global sock2
+    global sock3
+    global g_sock1_flag
+    global g_sock2_flag
+    global g_sock3_flag
+    global g_socket_list
+
     # start:
     # make queue file folder
     if not os.path.exists(MY_MQTT_QUEUE_FILE_PATH):
@@ -376,14 +420,19 @@ def main():
 
     client.loop_start()
     dot_str = ','
-    TCP_connect(Nport1_ip_port)
-    TCP_connect(Nport2_ip_port)
-    TCP_connect(Application_Server_ip_port)
     global Sensor_Count
     while True:
+        if g_sock1_flag == -1:
+            TCP_connect(Nport1_ip_port)
+        if g_sock2_flag == -1:
+            TCP_connect(Nport2_ip_port)
+        if g_sock3_flag == -1:
+            TCP_connect(Application_Server_ip_port)
+
         try:
             #Await a read event
-            rlist, wlist, elist = select.select( [sock1, sock2, sock3], [], [], 5)
+            #rlist, wlist, elist = select.select( [sock1, sock2, sock3], [], [], 5)
+            rlist, wlist, elist = select.select( g_socket_list, [], [], SELECT_TIMEOUT)
         except select.error:
             print "select error"
 
@@ -419,9 +468,12 @@ def main():
                         connect_DB_put_data(1, MAC_Address, Water_format, Sensor_Count)
                     if not recvdata:
                         print "sock1 Water Meter disconnect"
-                        TCP_connect(Nport1_ip_port)
+                        g_sock1_flag = -1
+                        close_socket(sock1)
                 except socket.error:
                     print "sock1 Water Meter socket error"
+                    g_sock1_flag = -1
+                    close_socket(sock1)
                     time.sleep(5)
             elif sock2 == sock: #rain
                 try:
@@ -457,9 +509,12 @@ def main():
                         connect_DB_put_data(2, MAC_Address, Rain_format, Sensor_Count)
                     if not recvdata:
                         print "sock2 Rain Meter disconnect"
-                        TCP_connect(Nport2_ip_port)
+                        g_sock2_flag = -1
+                        close_socket(sock2)
                 except socket.error:
                     print "sock2 Rain Meter socket error"
+                    g_sock2_flag = -1
+                    close_socket(sock2)
                     time.sleep(5)
             elif sock3 == sock: #Application server
                 try:
@@ -511,9 +566,12 @@ def main():
                          #   Rain_int = 0
                     if not recvdata:
                         print "sock3 Application Server disconnect"
-                        TCP_connect(Application_Server_ip_port)
+                        g_sock3_flag = -1
+                        close_socket(sock3)
                 except socket.error:
                     print "sock3 Application Server socket error"
+                    g_sock3_flag = -1
+                    close_socket(sock3)
                     time.sleep(5)
             else:
                 print"Socket Else"

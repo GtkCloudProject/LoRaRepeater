@@ -68,27 +68,44 @@ g_Nport2_ip_port_status = 0
 g_Nport3_ip_port_status = 0
 g_Nport4_ip_port_status = 0
 
-#LoRa check flag
-g_lora_check_flag = 0
+#socket flag
+g_sock1_flag = -1
+g_sock2_flag = -1
+g_sock3_flag = -1
+g_sock4_flag = -1
+g_sock5_flag = -1
+
+#select socket queue
+g_socket_list = []
+
+#select timeout
+SELECT_TIMEOUT = 1
+
+#To close socket
+def close_socket(sock_c):
+    global g_socket_list
+
+    sock_c.close()
+    try:
+        g_socket_list.remove(sock_c)
+    except ValueError:
+        pass
 
 #To show device I/O status
-def report_status_to_diagnosis_pc(ser):
+def report_status_to_diagnosis_pc():
     global sock1
+    global sock2
+    global sock3
+    global sock4
+    global sock5
     global g_Nport1_ip_port_status
     global g_Nport2_ip_port_status
-    global g_lora_check_flag
+    global g_Application_Server_ip_port_status
+    global g_Microwave_PC_ip_port_status
 
     try:
         print("Send sensor data to Diagnosis PC")
         sock1.send("== I/O Status Reporting ==\n")
-
-        if g_lora_check_flag == 0:
-            g_lora_check_flag = 1
-            ser.flushInput()
-            ser.flushOutput()
-            ser.write("at+dtx=11,\"1234567890a\"\r\n")
-            #return_state = ser.readlines()
-            #print(return_state)
 
         # LoRa
         sub_p = subprocess.Popen("cat /tmp/lora_status", stdout=subprocess.PIPE, shell=True)
@@ -153,12 +170,32 @@ def report_status_to_diagnosis_pc(ser):
             print(io_status)
             sock1.send(io_status)
 
+        #Application Server
+        if g_Application_Server_ip_port_status == 0:
+            io_status = "Application_Server Status %s \n" %(STATUS_OK)
+            print(io_status)
+            sock1.send(io_status)
+        else:
+            io_status = "Application_Server Status %s \n" %(STATUS_FAIL)
+            print(io_status)
+            sock1.send(io_status)
+
+        #Microwave_PC
+        if g_Microwave_PC_ip_port_status == 0:
+            io_status = "Microwave PC Status %s \n" %(STATUS_OK)
+            print(io_status)
+            sock1.send(io_status)
+        else:
+            io_status = "Microwave PC Status %s \n" %(STATUS_FAIL)
+            print(io_status)
+            sock1.send(io_status)
+
         sock1.send("\n")
 
     except socket.error:
         print"sock1 Diagnosis_PC socket error"
-        g_lora_check_flag = 0
-        TCP_connect(Diagnosis_PC_ip_port)
+        g_sock1_flag = -1
+        close_socket(sock1)
 
 #add by nick
 def TCP_connect(name):
@@ -169,7 +206,13 @@ def TCP_connect(name):
     global sock5
     global g_Nport3_ip_port_status
     global g_Nport4_ip_port_status
-    global g_lora_check_flag
+    global g_Application_Server_ip_port_status
+    global g_Microwave_PC_ip_port_status
+    global g_sock1_flag
+    global g_sock2_flag
+    global g_sock3_flag
+    global g_sock4_flag
+    global g_sock5_flag
 
     if name == Diagnosis_PC_ip_port:
         try:
@@ -180,9 +223,12 @@ def TCP_connect(name):
             sock1.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock1.connect(Diagnosis_PC_ip_port)
             print "sock1 Diagnosis PC connect"
+            g_sock1_flag = 0
+            g_socket_list.append(sock1)
         except:
             print "sock1 Diagnosis PC connect error"
-            g_lora_check_flag = 0
+            g_sock1_flag = -1
+            close_socket(sock1)
             pass
     elif name == Application_Server_ip_port:
         try:
@@ -193,8 +239,14 @@ def TCP_connect(name):
             sock2.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock2.connect(Application_Server_ip_port)
             print "sock2 Application Server connect"
+            g_Application_Server_ip_port_status = 0
+            g_sock2_flag = 0
+            g_socket_list.append(sock2)
         except:
             print"sock2 Application Server connect error"
+            g_Application_Server_ip_port_status = -1
+            g_sock2_flag = -1
+            close_socket(sock2)
             pass
     elif name == Microwave_PC_ip_port:
         try:
@@ -205,8 +257,14 @@ def TCP_connect(name):
             sock3.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock3.connect(Microwave_PC_ip_port)
             print "sock3 Microwave PC connect"
+            g_Microwave_PC_ip_port_status = 0
+            g_sock3_flag = 0
+            g_socket_list.append(sock3)
         except:
             print"sock3 Microwave PC connect error"
+            g_Microwave_PC_ip_port_status = -1
+            g_sock3_flag = -1
+            close_socket(sock3)
             pass
     elif name == Nport3_ip_port:
         try:
@@ -218,9 +276,13 @@ def TCP_connect(name):
             sock4.connect(Nport3_ip_port)
             print "sock4 Radio connect"
             g_Nport3_ip_port_status = 0
+            g_sock4_flag = 0
+            g_socket_list.append(sock4)
         except:
             print"sock4 Radio connect error"
             g_Nport3_ip_port_status = -1
+            g_sock4_flag = -1
+            close_socket(sock4)
             pass
     elif name == Nport4_ip_port:
         try:
@@ -232,9 +294,13 @@ def TCP_connect(name):
             sock5.connect(Nport4_ip_port)
             print "sock5 Display connect"
             g_Nport4_ip_port_status = 0
+            g_sock5_flag = 0
+            g_socket_list.append(sock5)
         except:
             print"sock5 Display connect error"
             g_Nport4_ip_port_status = -1
+            g_sock5_flag = -1
+            close_socket(sock5)
             pass
 
 def build_app_group_table():
@@ -429,7 +495,17 @@ def main():
     global Correction_Time_need_to_send
     global g_Sended_Flag
     global g_Retransmit_Flag
-    global g_lora_check_flag
+    global sock1
+    global sock2
+    global sock3
+    global sock4
+    global sock5
+    global g_sock1_flag
+    global g_sock2_flag
+    global g_sock3_flag
+    global g_sock4_flag
+    global g_sock5_flag
+    global g_socket_list
 
     # start:
     # make queue file folder
@@ -491,61 +567,88 @@ def main():
 
     my_dict = {}
     time_dict= {}
-    TCP_connect(Diagnosis_PC_ip_port)
-    TCP_connect(Application_Server_ip_port)
-    TCP_connect(Microwave_PC_ip_port)
-    TCP_connect(Nport3_ip_port)
-    TCP_connect(Nport4_ip_port)
 
     while True:
+        if g_sock1_flag == -1:
+            TCP_connect(Diagnosis_PC_ip_port)
+            if g_sock1_flag == 0:
+                ser.flushInput()
+                ser.flushOutput()
+                ser.write("at+dtx=11,\"1234567890a\"\r\n")
+                #return_state = ser.readlines()
+                #print(return_state)
+        if g_sock2_flag == -1:
+            TCP_connect(Application_Server_ip_port)
+        if g_sock3_flag == -1:
+            TCP_connect(Microwave_PC_ip_port)
+        if g_sock4_flag == -1:
+            TCP_connect(Nport3_ip_port)
+        if g_sock5_flag == -1:
+            TCP_connect(Nport4_ip_port)
+
         try:
             #Await a read event
-            rlist, wlist, elist = select.select( [sock1, sock2, sock3, sock4, sock5], [], [], 5)
+            rlist, wlist, elist = select.select( g_socket_list, [], [], SELECT_TIMEOUT)
         except select.error:
             print "select error"
+
         for sock in rlist:
             if sock1 == sock: #Diagnosis_PC
                 try:
                     recvdata, addr = sock.recvfrom(1024)
                     if not recvdata:
                         print "sock1 Diagnosis_PC disconnect"
-                        g_lora_check_flag = 0
-                        TCP_connect(Diagnosis_PC_ip_port)
+                        g_sock1_flag = -1
+                        close_socket(sock1)
                 except socket.error:
-                    g_lora_check_flag = 0
                     print "sock1 Diagnosis_PC socket error"
+                    g_sock1_flag = -1
+                    close_socket(sock1)
             elif sock2 == sock: #Application Server
                 try:
                     recvdata, addr = sock.recvfrom(1024)
                     if not recvdata:
                         print "sock2 Application Server disconnect"
-                        TCP_connect(Application_Server_ip_port)
+                        g_sock2_flag = -1
+                        close_socket(sock2)
                 except socket.error:
                     print "sock2 Application Server socket error"
+                    g_sock2_flag = -1
+                    close_socket(sock2)
             elif sock3 == sock: #Microwave PC
                 try:
                     recvdata, addr = sock.recvfrom(1024)
                     if not recvdata:
                         print "sock3 Microwave PC disconnect"
-                        TCP_connect(Microwave_PC_ip_port)
+                        g_sock3_flag = -1
+                        close_socket(sock3)
                 except socket.error:
                     print "sock3 Microwave PC socket error"
+                    g_sock3_flag = -1
+                    close_socket(sock3)
             elif sock4 == sock: #Radio
                 try:
                     recvdata, addr = sock.recvfrom(1024)
                     if not recvdata:
                         print "sock4 Radio disconnect"
-                        TCP_connect(Nport3_ip_port)
+                        g_sock4_flag = -1
+                        close_socket(sock4)
                 except socket.error:
                     print "sock4 Radio socket error"
+                    g_sock4_flag = -1
+                    close_socket(sock4)
             elif sock5 == sock: #Display
                 try:
                     recvdata, addr = sock.recvfrom(1024)
                     if not recvdata:
                         print "sock5 Display disconnect"
-                        TCP_connect(Nport4_ip_port)
+                        g_sock5_flag = -1
+                        close_socket(sock5)
                 except socket.error:
                     print "sock5 Display socket error"
+                    g_sock5_flag = -1
+                    close_socket(sock5)
+
         tablename = 'sensordata'
         get_sensor_data_from_DB(tablename)
         if Data_need_to_send != None:
@@ -713,7 +816,8 @@ def main():
                 print("Result: Send FAIL!")
 
         #To send LoRa repeater I/O status to  Diagnosis PC
-        report_status_to_diagnosis_pc(ser)
+        if g_sock1_flag == 0:
+            report_status_to_diagnosis_pc()
 
         time.sleep(MY_SLEEP_INTERVAL)
 if __name__ == "__main__":
