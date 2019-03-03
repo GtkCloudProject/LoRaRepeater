@@ -306,7 +306,7 @@ def TCP_connect(name):
             os.system("echo \"0\" > /tmp/Nport1_status")
             os.system("sync")
         except:
-            print("sock1 Water Meter error")
+            print("sock1 Water Meter connect error")
             g_sock1_flag = -1
             close_socket(sock1)
             os.system("echo \"-1\" > /tmp/Nport1_status")
@@ -326,7 +326,7 @@ def TCP_connect(name):
             os.system("echo \"0\" > /tmp/Nport2_status")
             os.system("sync")
         except:
-            print("sock2 Rain Meter error")
+            print("sock2 Rain Meter connect error")
             g_sock2_flag = -1
             close_socket(sock2)
             os.system("echo \"-1\" > /tmp/Nport2_status")
@@ -384,7 +384,7 @@ def main():
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     my_logger.addHandler(handler)
-    print('I am started!')
+    print('inq.py is started!')
 # example
 # my_logger.debug('debug message')
 # print('info message')
@@ -439,7 +439,7 @@ def main():
         for sock in rlist:
             if sock1 == sock: #water
                 try:
-                    recvdata, addr = sock.recvfrom(1024)
+                    recvdata = sock.recv(1024)
                     if recvdata:
                         print "received Water:"+str(recvdata)
                         Water = recvdata[recvdata.find(dot_str) +1:]
@@ -477,7 +477,7 @@ def main():
                     time.sleep(5)
             elif sock2 == sock: #rain
                 try:
-                    recvdata, addr = sock.recvfrom(1024)
+                    recvdata = sock.recv(1024)
                     if recvdata:
                         print "received Rain:"+str(recvdata)
                         Rain = recvdata[recvdata.find(dot_str) + 1:]
@@ -518,7 +518,7 @@ def main():
                     time.sleep(5)
             elif sock3 == sock: #Application server
                 try:
-                    recvdata, addr = sock.recvfrom(1024)
+                    recvdata = sock.recv(1024)
                     if recvdata:
                         print "received Application Server Data:"+str(recvdata)
                         #parser receive data is correction time or retransmit command

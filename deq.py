@@ -537,6 +537,7 @@ def main():
 
     build_app_group_table()
 
+    print('deq.py is started!')
     print('dic - appskey and nwkskey')
     print(my_dict_appskey)
     print(my_dict_nwkskey)
@@ -595,7 +596,7 @@ def main():
         for sock in rlist:
             if sock1 == sock: #Diagnosis_PC
                 try:
-                    recvdata, addr = sock.recvfrom(1024)
+                    recvdata = sock.recv(1024)
                     if not recvdata:
                         print "sock1 Diagnosis_PC disconnect"
                         g_sock1_flag = -1
@@ -606,7 +607,7 @@ def main():
                     close_socket(sock1)
             elif sock2 == sock: #Application Server
                 try:
-                    recvdata, addr = sock.recvfrom(1024)
+                    recvdata = sock.recv(1024)
                     if not recvdata:
                         print "sock2 Application Server disconnect"
                         g_sock2_flag = -1
@@ -617,7 +618,7 @@ def main():
                     close_socket(sock2)
             elif sock3 == sock: #Microwave PC
                 try:
-                    recvdata, addr = sock.recvfrom(1024)
+                    recvdata = sock.recv(1024)
                     if not recvdata:
                         print "sock3 Microwave PC disconnect"
                         g_sock3_flag = -1
@@ -628,7 +629,7 @@ def main():
                     close_socket(sock3)
             elif sock4 == sock: #Radio
                 try:
-                    recvdata, addr = sock.recvfrom(1024)
+                    recvdata = sock.recv(1024)
                     if not recvdata:
                         print "sock4 Radio disconnect"
                         g_sock4_flag = -1
@@ -639,7 +640,7 @@ def main():
                     close_socket(sock4)
             elif sock5 == sock: #Display
                 try:
-                    recvdata, addr = sock.recvfrom(1024)
+                    recvdata = sock.recv(1024)
                     if not recvdata:
                         print "sock5 Display disconnect"
                         g_sock5_flag = -1
