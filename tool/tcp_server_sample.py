@@ -6,6 +6,7 @@ TCP/IP Server sample
 import socket
 import threading
 import time
+import sys
 
 bind_ip = "192.168.127.101"
 #bind_ip = "0.0.0.0"
@@ -24,8 +25,17 @@ print ("[%s] To listen on %s:%d" % (time.asctime(time.localtime(time.time())), b
 def handle_client(client_socket):
     #print "[*] To start a new client socket"
     print ("[%s] To start a new client socket" % (time.asctime(time.localtime(time.time()))))
-    correct_time_flag = 1
-    resend_flag = 1
+
+    if sys.argv[1] == "2" : #For the correct time command
+        correct_time_flag = 1
+        resend_flag = 0
+    elif sys.argv[1] == "3" : #For the resend command
+        correct_time_flag = 0
+        resend_flag = 1
+    else : #For forward command
+        correct_time_flag = 0
+        resend_flag = 0
+
     while True:
         time.sleep(1)
         try:
@@ -45,6 +55,7 @@ def handle_client(client_socket):
                 #print "[*] To send the resend command       : %s" % (correct_time_cmd)
                 print ("[%s] To send the resend command       : %s" % (time.asctime(time.localtime(time.time())), resend_cmd))
 
+            print("\r")
             response = client_socket.recv(1024).decode()
             macaddr = response[0:8]
             recvtime = response[10:18]

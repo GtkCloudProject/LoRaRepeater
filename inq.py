@@ -176,7 +176,7 @@ def connect_DB_select_data(type, sensor_mac, time, time_interval, sensor_data, s
             cursor.execute("USE sensor")
             print "sensor_mac:",sensor_mac
             if type == 1:
-                sql = "UPDATE sensordata SET retransmit_flag =1 where time >='%s' and time <= DATE_ADD('%s', INTERVAL '%s' MINUTE) and source_mac_address='%s'" % (time, time, time_interval, sensor_mac)
+                sql = "UPDATE sensordata SET retransmit_flag =1 where time >='%s' and time < DATE_ADD('%s', INTERVAL '%s' MINUTE) and source_mac_address='%s'" % (time, time, time_interval, sensor_mac)
                 cursor.execute(sql)
                 connection.commit()
             elif type == 2:

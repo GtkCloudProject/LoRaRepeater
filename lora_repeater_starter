@@ -17,12 +17,12 @@
 case "$1" in
   start)
     echo "Starting Lora_Repeater inq and deq"
-    # run application you want to start
+    # To run application you want to start
     /mnt/data/LoRaRepeater/check_repeater.sh &
     ;;
   stop)
     echo "Stopping Lora_Repeater inq and deq"
-    # kill application you want to stop
+    # To kill application you want to stop
     killall check_repeater.sh
     killall inq.py deq.py
     ;;
