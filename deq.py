@@ -68,6 +68,12 @@ g_Nport2_ip_port_status = 0
 g_Nport3_ip_port_status = 0
 g_Nport4_ip_port_status = 0
 
+#Application Server status
+g_Application_Server_ip_port_status = -1
+
+#Microwave_PC status
+g_Microwave_PC_ip_port_status = -1
+
 #socket flag
 g_sock1_flag = -1
 g_sock2_flag = -1
@@ -102,6 +108,7 @@ def report_status_to_diagnosis_pc():
     global g_Nport2_ip_port_status
     global g_Application_Server_ip_port_status
     global g_Microwave_PC_ip_port_status
+    global g_sock1_flag
 
     try:
         print("Send sensor data to Diagnosis PC")
@@ -213,6 +220,7 @@ def TCP_connect(name):
     global g_sock3_flag
     global g_sock4_flag
     global g_sock5_flag
+    global g_socket_list
 
     if name == Diagnosis_PC_ip_port:
         try:
@@ -820,6 +828,5 @@ def main():
         if g_sock1_flag == 0:
             report_status_to_diagnosis_pc()
 
-        time.sleep(MY_SLEEP_INTERVAL)
 if __name__ == "__main__":
     main()
