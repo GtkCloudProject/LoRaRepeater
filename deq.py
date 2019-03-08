@@ -12,6 +12,8 @@ import struct
 import binascii
 import subprocess
 from logging.handlers import RotatingFileHandler
+import crcmod.predefined
+from binascii import unhexlify
 
 USB_DEV_ARRAY = ["/dev/ttyS0"]
 
@@ -719,6 +721,41 @@ def main():
             except socket.error:
                 print"sock4 Radio socket error"
                 TCP_connect(Nport3_ip_port)
+            if Self_MAC_Level == recv_MAC_Level:
+                try:
+                    print("Send sensor data to Display")
+                    combinestr = str(int(sensor_data[10:14],16))+str(int(sensor_data[14:16],16)).zfill(2)
+                    print "combinestr:",combinestr
+                    if int(combinestr) > 65535:
+                        convertdata = str('{0:X}'.format(int(combinestr))).zfill(6)
+                        print "convertdata:",convertdata
+                        crc_data = unhexlify('00060027'+str(convertdata[2:6]))
+                    else:
+                        convertdata = str('{0:X}'.format(int(combinestr))).zfill(4)
+                        print "convertdata:",convertdata
+                        crc_data = unhexlify('00060027'+str(convertdata))
+                    crc_func = crcmod.predefined.mkCrcFun('modbus')
+                    modbus_crc = str('{0:X}'.format(crc_func(crc_data))).zfill(4)
+                    print "Modbus CRC:",modbus_crc
+                    low_crc = str(modbus_crc)[2:4]
+                    high_crc = str(modbus_crc)[0:2]
+                    if len(convertdata) >4:
+                        print "Display Data > 65535"
+                        socksend_high_data = unhexlify('000600260001A810')
+                        sock5.send(socksend_high_data)
+                        time.sleep(1)
+                        socksend_low_data = unhexlify('00060027'+convertdata[2:6]+low_crc+high_crc)
+                        sock5.send(socksend_low_data)
+                    else:
+                        print "Display Data <= 65535"
+                        socksend_high_data = unhexlify('00060026000069D0')
+                        sock5.send(socksend_high_data)
+                        time.sleep(1)
+                        socksend_low_data = unhexlify('00060027'+convertdata+low_crc+high_crc)
+                        sock5.send(socksend_low_data)
+                except socket.error:
+                    print"sock5 Display socket error"
+                    TCP_connect(Nport4_ip_port)
         else:
             print("Waiting for incoming queue")
         tablename = 'correctiontime'

@@ -6,7 +6,7 @@ apt-get install -y mosquitto python-pip
 pip install paho-mqtt python-etcd pyserial
 pip install --user pymysql
 pip install --user natsort
-
+pip install --user crcmod
 echo "To add system id 05 and key to database"
 mysql -uroot -p123456 lora -e "delete from table_netid where netid_group='05'"
 mysql -uroot -p123456 lora -e "insert into table_netid values ('05','05000000','05ffffff','1000','BA21C6216312C334597D88711D9EFABE','BA21C6216312C334597D88711D9EFABE');"
