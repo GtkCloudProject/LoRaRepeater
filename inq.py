@@ -442,7 +442,18 @@ def main():
                     recvdata = sock.recv(1024)
                     if recvdata:
                         print "received Water:"+str(recvdata)
-                        Water = recvdata[recvdata.find(dot_str) +1:]
+                        recvstr = recvdata[recvdata.find(dot_str) + 1:]
+                        print "recvstr:",recvstr
+                        if dot_str in recvstr: #find 2nd dot_str
+                            Water = recvstr[0:recvstr.find(dot_str)]
+                            print "Water:",Water
+                            Power_status = int(recvstr[recvstr.find(dot_str) +1:])
+                            print "Power_status:",Power_status
+                        else: #no 2nd dot_str
+                            Water = recvstr[0:recvstr.find(dot_str)]
+                            print "Water:",Water
+                            Power_status = 1
+                            print "Power_status:",Power_status
                         try:
                             Water_float = round(float(Water),2)
                         except:
@@ -458,7 +469,7 @@ def main():
                         Time = int(time.time())
                         #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
-                        Water_format = binascii.hexlify(struct.pack(Endian + 'BLHB', CMD, Time, Water_int, Water_decimal))
+                        Water_format = binascii.hexlify(struct.pack(Endian + 'BLHBB', CMD, Time, Water_int, Water_decimal,Power_status))
                         print Water_format
                         if Sensor_Count == 9999:
                             Sensor_Count = 1
@@ -480,7 +491,18 @@ def main():
                     recvdata = sock.recv(1024)
                     if recvdata:
                         print "received Rain:"+str(recvdata)
-                        Rain = recvdata[recvdata.find(dot_str) + 1:]
+                        recvstr = recvdata[recvdata.find(dot_str) + 1:]
+                        print "recvstr:",recvstr
+                        if dot_str in recvstr: #find 2nd dot_str
+                            Rain = recvstr[0:recvstr.find(dot_str)]
+                            print "Rain:",Rain
+                            Power_status = int(recvstr[recvstr.find(dot_str) +1:])
+                            print "Power_status:",Power_status
+                        else: #no 2nd dot_str
+                            Rain = recvstr[0:recvstr.find(dot_str)]
+                            print "Rain:",Rain
+                            Power_status = 1
+                            print "Power_status:",Power_status
                         try:
                             Rain_float = round(float(Rain),2)
                             print "Rain_float:",Rain_float
@@ -499,7 +521,7 @@ def main():
                         Time = int(time.time())
                         #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
-                        Rain_format = binascii.hexlify(struct.pack(Endian + 'BLHB', CMD, Time, Rain_int, Rain_decimal))
+                        Rain_format = binascii.hexlify(struct.pack(Endian + 'BLHBB', CMD, Time, Rain_int, Rain_decimal,Power_status))
                         print Rain_format
                         if Sensor_Count == 9999:
                             Sensor_Count = 1
