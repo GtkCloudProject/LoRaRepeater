@@ -50,7 +50,7 @@ def handle_client(client_socket):
 
             if resend_flag == 1 :
                 resend_flag = 0
-                resend_cmd = "05001005095c7cc2d303"
+                resend_cmd = "05001005095c85d9a405"
                 client_socket.send(resend_cmd.encode())
                 #print "[*] To send the resend command       : %s" % (correct_time_cmd)
                 print ("[%s] To send the resend command       : %s" % (time.asctime(time.localtime(time.time())), resend_cmd))
@@ -73,7 +73,11 @@ def handle_client(client_socket):
                 else:
                     type = 'rain'
                 data = '%s.%s' % (str(int(response[18:22], 16)), str(int(response[22:24], 16)))
-                print ("[%s] MacAddr: %s, Time: %s, DataType: %s, Data: %s" % (time.asctime(time.localtime(time.time())), macaddr, strtime, type, data))
+                if response[24:26] =='00':
+                    power_status = 'Interruption'
+                else:
+                    power_status = 'Normal'
+                print ("[%s] MacAddr: %s, Time: %s, DataType: %s, Data: %s, Power Status: %s" % (time.asctime(time.localtime(time.time())), macaddr, strtime, type, data, power_status))
             elif response[8:10] == "89" or response[8:10] == "8a" or response[8:10] == "29" or response[8:10] == "2a": #29 and 2a is for nick test
                 #print "[*] The re-send data response : %s" % (response)
                 print ("[%s] The re-send data response : %s" % (time.asctime(time.localtime(time.time())), response))
@@ -82,7 +86,11 @@ def handle_client(client_socket):
                 else:
                     type = 'rain'
                 data = '%s.%s' % (str(int(response[18:22], 16)), str(int(response[22:24], 16)))
-                print ("[%s] MacAddr: %s, Time: %s, DataType: %s, Data: %s" % (time.asctime(time.localtime(time.time())), macaddr, strtime, type, data))
+                if response[24:26] =='00':
+                    power_status = 'Interruption'
+                else:
+                    power_status = 'Normal'
+                print ("[%s] MacAddr: %s, Time: %s, DataType: %s, Data: %s, Power Status: %s" % (time.asctime(time.localtime(time.time())), macaddr, strtime, type, data, power_status))
 
             else:
                 #print "[*] The unknown data response : %s" % (response)
