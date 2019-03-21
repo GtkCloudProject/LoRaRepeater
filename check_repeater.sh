@@ -12,6 +12,8 @@ do
         echo "inq is running."
     fi
 
+    sleep 3
+
     totalNumD=`ps cax | grep deq | wc -l`
 
     echo $totalNumD
