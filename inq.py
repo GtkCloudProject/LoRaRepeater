@@ -317,7 +317,7 @@ def on_message(client, userdata, msg):
             if sensor_mac[8:16] == MAC_Address:
                 print("Select Re-transmit data from DB")
                 connect_DB_select_data(1, sensor_mac[8:16], strtime, time_interval, sensor_data , sensor_count)
-        elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 16:
+        elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 18:
             print"Receive Retransmit ACK data from lora"
             if Self_MAC_Level > recv_mac_level:
                 print("Ready to put Retransmit sensor data to DB")
