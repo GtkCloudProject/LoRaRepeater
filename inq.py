@@ -38,6 +38,7 @@ MAC_Address=0
 Self_MAC_Level=0
 Sensor_Count=0
 Endian = '>' #big-endian
+MAX_DB_Count = 99999
 
 #select socket queue
 g_socket_list = []
@@ -124,34 +125,79 @@ def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #typ
             SourceMACAddress = MAC_Address
             if type == 1:
                 print("parameter = Water")
+                sql = "select * from sensordata"
+                number_of_rows = cursor.execute(sql)
+                print"number_of_rows is:",number_of_rows
+                if number_of_rows > MAX_DB_Count:
+                    del_number = number_of_rows - MAX_DB_Count
+                    print"Delete number_of_rows is:",del_number
+                    sql = "delete from sensordata order by time limit %s" % del_number
+                    cursor.execute(sql)
+                    connection.commit()
                 tmp_time = time.localtime(int(p_sensor_data[2:10],16))
                 sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', %s)" % (SourceMACAddress, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                 cursor.execute(sql)
                 connection.commit()
             elif type == 2:
                 print("parameter = Rain")
+                sql = "select * from sensordata"
+                number_of_rows = cursor.execute(sql)
+                print"number_of_rows is:",number_of_rows
+                if number_of_rows > MAX_DB_Count:
+                    del_number = number_of_rows - MAX_DB_Count
+                    print"Delete number_of_rows is:",del_number
+                    sql = "delete from sensordata order by time limit %s" % del_number
+                    cursor.execute(sql)
+                    connection.commit()
                 tmp_time = time.localtime(int(p_sensor_data[2:10],16))
                 sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', %s)" % (SourceMACAddress, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                 cursor.execute(sql)
                 connection.commit()
             elif type == 3:
                 print("parameter = Lora")
+                sql = "select * from sensordata"
+                number_of_rows = cursor.execute(sql)
+                print"number_of_rows is:",number_of_rows
+                if number_of_rows > MAX_DB_Count:
+                    del_number = number_of_rows - MAX_DB_Count
+                    print"Delete number_of_rows is:",del_number
+                    sql = "delete from sensordata order by time limit %s" % del_number
+                    cursor.execute(sql)
+                    connection.commit()
                 tmp_time = time.localtime(int(p_sensor_data[2:10],16))
                 sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s')" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                 cursor.execute(sql)
                 connection.commit()
             elif type == 4:
                 print("parameter = Correction Time")
+                sql = "select * from correctiontime"
+                number_of_rows = cursor.execute(sql)
+                print"number_of_rows is:",number_of_rows
+                if number_of_rows > MAX_DB_Count:
+                    del_number = number_of_rows - MAX_DB_Count
+                    print"Delete number_of_rows is:",del_number
+                    sql = "delete from sensordata order by time limit %s" % del_number
+                    cursor.execute(sql)
+                    connection.commit()
                 tmp_time = time.localtime(int(p_sensor_data[2:10],16))
                 sql = "insert ignore into correctiontime (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s')" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                 cursor.execute(sql)
                 connection.commit()
             elif type == 5:
                 print("parameter = Retransmition")
+                sql = "select * from retransmission"
+                number_of_rows = cursor.execute(sql)
+                print"number_of_rows is:",number_of_rows
+                if number_of_rows > MAX_DB_Count:
+                    del_number = number_of_rows - MAX_DB_Count
+                    print"Delete number_of_rows is:",del_number
+                    sql = "delete from sensordata order by time limit %s" % del_number
+                    cursor.execute(sql)
+                    connection.commit()
                 tmp_time = time.localtime(int(p_sensor_data[2:10],16))
                 time_interval = int(p_sensor_data[10:12],16)
                 print "time_interval:",time_interval
-                sql = "insert ignore into retransmission(source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s')" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
+                sql = "insert ignore into retransmission(source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s') ON DUPLICATE KEY UPDATE sended_flag =0" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                 cursor.execute(sql)
                 connection.commit()
     finally:
@@ -180,6 +226,15 @@ def connect_DB_select_data(type, sensor_mac, time, time_interval, sensor_data, s
                 cursor.execute(sql)
                 connection.commit()
             elif type == 2:
+                sql = "select * from sensordata"
+                number_of_rows = cursor.execute(sql)
+                print"number_of_rows is:",number_of_rows
+                if number_of_rows > MAX_DB_Count:
+                    del_number = number_of_rows - MAX_DB_Count
+                    print"Delete number_of_rows is:",del_number
+                    sql = "delete from sensordata order by time limit %s" % del_number
+                    cursor.execute(sql)
+                    connection.commit()
                 sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count, sended_flag, retransmit_flag) values('%s', '%s', '%s', '%s', 1, 1) ON DUPLICATE KEY UPDATE retransmit_flag =1" % (sensor_mac, time, sensor_data, sensor_count)
                 cursor.execute(sql)
                 connection.commit()

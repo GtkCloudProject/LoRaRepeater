@@ -1,6 +1,5 @@
 #!/bin/sh
 
-deq_run_flag=0
 while true
 do
     totalNum=`ps cax | grep inq | wc -l`
@@ -21,11 +20,6 @@ do
         /mnt/data/LoRaRepeater/deq.py &
     else
         echo "deq is running."
-        if [ $deq_run_flag -eq 0 ] ; then
-            echo "To delete retransmission table"
-            mysql -uroot -p123456 sensor -e "drop table retransmission"
-            deq_run_flag=1
-        fi
     fi
 
     sleep 3
