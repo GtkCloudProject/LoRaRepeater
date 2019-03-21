@@ -18,3 +18,12 @@ tcp_server_sample.py : the tcp server source code for testing => To send the cor
         => ./tcp_server_sample.py 2 #to send the correct time command and receive the response and the forward data
         => ./tcp_server_sample.py 3 #to send the resend command and receive the response and the forward data
     => To kill : killall tcp_server_sample.py
+
+
+InsertDB.sh : To insert data to database
+    =>run ./InsertDB.sh TableName{correctiontime | retransmission | sensordata} Count{number}
+      e.g. ./InsertDB.sh sensordata 9999 =>means to insert 9999 data into sensordata table
+      note: to Insert 100000 data into table may take about 1 hour time.
+DeleteDB.sh : To delete data to database
+    =>run ./DeleteDB.sh TableName{correctiontime | retransmission | sensordata} Count{number}
+      e.g. ./DeleteDB.sh sensordata 9999 =>means to delete 9999 data from sensordata table
