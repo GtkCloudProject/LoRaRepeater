@@ -39,6 +39,8 @@ Self_MAC_Level=0
 Sensor_Count=0
 Endian = '>' #big-endian
 MAX_DB_Count = 99999
+CorrectionTimeFlag =0
+CorrectionTimeCounter =0
 
 #select socket queue
 g_socket_list = []
@@ -176,7 +178,7 @@ def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #typ
                 if number_of_rows > MAX_DB_Count:
                     del_number = number_of_rows - MAX_DB_Count
                     print"Delete number_of_rows is:",del_number
-                    sql = "delete from sensordata order by time limit %s" % del_number
+                    sql = "delete from correctiontime order by time limit %s" % del_number
                     cursor.execute(sql)
                     connection.commit()
                 tmp_time = time.localtime(int(p_sensor_data[2:10],16))
@@ -191,7 +193,7 @@ def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #typ
                 if number_of_rows > MAX_DB_Count:
                     del_number = number_of_rows - MAX_DB_Count
                     print"Delete number_of_rows is:",del_number
-                    sql = "delete from sensordata order by time limit %s" % del_number
+                    sql = "delete from retransmission order by time limit %s" % del_number
                     cursor.execute(sql)
                     connection.commit()
                 tmp_time = time.localtime(int(p_sensor_data[2:10],16))
@@ -274,25 +276,35 @@ def on_message(client, userdata, msg):
         Data_type = Command & ~( 1<<2 | 1<<3 | 1<<4 | 1<<5 | 1<<6 | 1<<7 )
 # Store data to DB
 # Check the command if not sensor data do not insert to DB
+        global CorrectionTimeFlag, CorrectionTimeCounter
         if CMD == 0 and (Data_type == 1 or Data_type == 2):
             print"Receive Sensor data from lora"
             if Self_MAC_Level >= recv_mac_level:
                 print("Ready to put sensor data to DB")
+                CorrectionTimeCounter += 1
+                if CorrectionTimeCounter == 6: #each time forward will add 3 counter
+                    CorrectionTimeFlag = 0
+                    CorrectionTimeCounter = 0
                 connect_DB_put_data(3, sensor_mac[8:16], sensor_data, sensor_count)
         elif Data_type == 0 and CMD == 1:
             print("Receive Correction Lora Packet")
             print "MAC_Address:",MAC_Address
             print "sensor_mac[8:16]:",sensor_mac[8:16]
             if 'ffffff' in sensor_mac[8:16] or 'FFFFFF' in sensor_mac[8:16]:
-                print("Broadcast Correction Packet")
+                print("Receive Broadcast Correction Packet")
                 #replace system time here by nick
-                correcttime = sensor_data[2:10]
-                print "correcttime:",correcttime
-                tmp_time = time.localtime(int(correcttime,16))
-                #print "tmp_time:",tmp_time
-                strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
-                print "strtime:",strtime
-                os.system('date -s "%s"' % strtime)
+                if CorrectionTimeFlag == 0: #0: ready to replace system time 1: already replace system time wait for cool down
+                    correcttime = sensor_data[2:10]
+                    print "correcttime:",correcttime
+                    tmp_time = time.localtime(int(correcttime,16))
+                    #print "tmp_time:",tmp_time
+                    strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
+                    print "strtime:",strtime
+                    os.system('date -s "%s"' % strtime)
+                    CorrectionTimeFlag = 1
+                    CorrectionTimeCounter = 0
+                else:
+                    print"Already replace system time wait for cool down!"
                 #pepare correction time ack
                 if Self_MAC_Level <= recv_mac_level:
                     print("Ready to put correction time data to DB")
@@ -603,15 +615,21 @@ def main():
                         if command == '04':
                             datalen = len(recvdata)
                             if datalen == 18:
+                                global CorrectionTimeFlag, CorrectionTimeCounter
                                 print "received correction time command"
                                 #replace system time here by nick
-                                correcttime = recvdata[10:18]
-                                #print "correcttime:",correcttime
-                                tmp_time = time.localtime(int(correcttime,16))
-                                #print "tmp_time:",tmp_time
-                                strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
-                                #print "strtime:",strtime
-                                os.system('date -s "%s"' % strtime)
+                                if CorrectionTimeFlag == 0: #0: ready to replace system time 1: already replace system time wait for cool down
+                                    correcttime = recvdata[10:18]
+                                    #print "correcttime:",correcttime
+                                    tmp_time = time.localtime(int(correcttime,16))
+                                    #print "tmp_time:",tmp_time
+                                    strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
+                                    #print "strtime:",strtime
+                                    os.system('date -s "%s"' % strtime)
+                                    CorrectionTimeFlag = 1
+                                    CorrectionTimeCounter = 0
+                                else:
+                                    print"Already replace system time wait for cool down!"
                                 server_mac_address = recvdata[0:8]
                                 #print "server_mac_address",server_mac_address
                                 data = recvdata[8:18]
