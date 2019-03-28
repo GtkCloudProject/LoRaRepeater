@@ -136,7 +136,11 @@ def report_status_to_diagnosis_pc():
         # N port port 1
         sub_p = subprocess.Popen("cat /tmp/Nport1_status", stdout=subprocess.PIPE, shell=True)
         (nport1_status, err) = sub_p.communicate()
-        g_Nport1_ip_port_status = int(nport1_status)
+        if len(nport1_status) > 0:
+            g_Nport1_ip_port_status = int(nport1_status)
+        else:
+            g_Nport1_ip_port_status = -1
+
         if g_Nport1_ip_port_status == 0:
             io_status = "N Port Port 1 Status %s \n" %(STATUS_OK)
             print(io_status)
@@ -149,7 +153,11 @@ def report_status_to_diagnosis_pc():
         # N port port 2
         sub_p = subprocess.Popen("cat /tmp/Nport2_status", stdout=subprocess.PIPE, shell=True)
         (nport2_status, err) = sub_p.communicate()
-        g_Nport2_ip_port_status = int(nport2_status)
+        if len(nport2_status) > 0:
+            g_Nport2_ip_port_status = int(nport2_status)
+        else:
+            g_Nport2_ip_port_status = -1
+
         if g_Nport2_ip_port_status == 0:
             io_status = "N Port Port 2 Status %s \n" %(STATUS_OK)
             print(io_status)
@@ -662,6 +670,7 @@ def main():
 
         tablename = 'sensordata'
         get_sensor_data_from_DB(tablename)
+        return_state = ""
         if Data_need_to_send != None:
             print "Sensor data send"
             #sensor_data = Data_need_to_send
@@ -694,6 +703,7 @@ def main():
                 #print(return_state)
             else:
                 print('Not in ABP Group Config Rule, so give up')
+                update_sensor_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
 
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
@@ -760,6 +770,7 @@ def main():
             print("Waiting for incoming queue")
         tablename = 'correctiontime'
         get_sensor_data_from_DB(tablename)
+        return_state = ""
         if Correction_Time_need_to_send != None:
             print"Correction time send"
             #convert Correction_Time_need_to_send to hex time
@@ -791,6 +802,7 @@ def main():
                 #print(return_state)
             else:
                 print('Not in ABP Group Config Rule, so give up')
+                update_sensor_data_to_DB(2, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
 
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
@@ -824,6 +836,7 @@ def main():
 
         tablename = 'retransmission'
         get_sensor_data_from_DB(tablename)
+        return_state = ""
         if Retransmission_need_to_send != None:
             print"Retransmit send"
             sensor_data = Retransmission_need_to_send
@@ -852,6 +865,7 @@ def main():
                 #print(return_state)
             else:
                 print('Not in ABP Group Config Rule, so give up')
+                update_sensor_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
 
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
