@@ -25,4 +25,16 @@ do
     fi
 
     sleep 3
+
+    file="repeater_upgrade.zip"
+    cd /mnt/data/Ftpdir
+    if [ -f "$file" ];then
+    echo "Find upgrade FW"
+    #killall check_repeater.sh
+    killall inq.py deq.py
+    unzip -o /mnt/data/Ftpdir/repeater_upgrade.zip -d /mnt/data/LoRaRepeater
+    rm repeater_upgrade.zip
+    #source /mnt/data/LoRaRepeater/install.sh
+    reboot
+    fi
 done
