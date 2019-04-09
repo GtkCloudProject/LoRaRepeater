@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import paho.mqtt.client as mqtt
+import threading
 import json
 import sys
 import os
@@ -53,6 +54,9 @@ g_sock3_flag = -1
 #select timeout
 SELECT_TIMEOUT = 1
 
+#mutex lock for accessing DB
+g_db_mutex = threading.Lock()
+
 #To close socket
 def close_socket(sock_c):
     global g_socket_list
@@ -95,117 +99,123 @@ def get_lora_module_addr(dev_path):
         # print 'FAIL: Cannot open Serial Port (No LoRa Node Inserted)'
         return None
 
-def connect_DB_put_data(type, p_sensor_mac, p_sensor_data, p_sensor_count): #type 1:Water 2:Rain 3:Lora 4:correctiontime 5:retransmission
-    # Connect to the database
-    connection = pymysql.connect(host='localhost',
-                                 user='root',
-                                 password='123456',
-                                 #db='lora',
-                                 #charset='utf8mb4',
-                                 cursorclass=pymysql.cursors.DictCursor)
-    #if self is source sensor, write into DB else store forward data
-    try:
-        with connection.cursor() as cursor:
-            # Read a single record
-            # sql = "SELECT `id`, `password` FROM `users` WHERE `email`=%s"
-            print("connect to DB")
+def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #db_type 1:Water 2:Rain 3:Lora 4:correctiontime 5:retransmission
 
-            sql = "create database if not exists sensor"
-            cursor.execute(sql)
-            cursor.execute("USE sensor")
-            print "p_sensor_mac:",p_sensor_mac
-            if type <=3:
-                print("DB type <=3")
-                sql = "create table if not exists sensordata(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, retransmit_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
-            elif type == 4:
-                print("DB type == 4")
-                sql = "create table if not exists correctiontime(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
-            elif type == 5:
-                print("DB type == 5")
-                sql = "create table if not exists retransmission(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL,UNIQUE(source_mac_address, time, frame_count))"
-            cursor.execute(sql)
-            SourceMACAddress = MAC_Address
-            if type == 1:
-                print("parameter = Water")
-                sql = "select * from sensordata"
-                number_of_rows = cursor.execute(sql)
-                print"number_of_rows is:",number_of_rows
-                if number_of_rows > MAX_DB_Count:
-                    del_number = number_of_rows - MAX_DB_Count
-                    print"Delete number_of_rows is:",del_number
-                    sql = "delete from sensordata order by time limit %s" % del_number
+    global g_db_mutex
+
+    if g_db_mutex.acquire():
+        # Connect to the database
+        connection = pymysql.connect(host='localhost',
+                                     user='root',
+                                     password='123456',
+                                     #db='lora',
+                                     #charset='utf8mb4',
+                                     cursorclass=pymysql.cursors.DictCursor)
+        #if self is source sensor, write into DB else store forward data
+        try:
+            with connection.cursor() as cursor:
+                # Read a single record
+                # sql = "SELECT `id`, `password` FROM `users` WHERE `email`=%s"
+                print("connect to DB")
+
+                sql = "create database if not exists sensor"
+                cursor.execute(sql)
+                cursor.execute("USE sensor")
+                print "p_sensor_mac:",p_sensor_mac
+                if db_type <=3:
+                    print("DB type <=3")
+                    sql = "create table if not exists sensordata(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, retransmit_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
+                elif db_type == 4:
+                    print("DB type == 4")
+                    sql = "create table if not exists correctiontime(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
+                elif db_type == 5:
+                    print("DB type == 5")
+                    sql = "create table if not exists retransmission(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL,UNIQUE(source_mac_address, time, frame_count))"
+                cursor.execute(sql)
+                SourceMACAddress = MAC_Address
+                if db_type == 1:
+                    print("parameter = Water")
+                    sql = "select * from sensordata"
+                    number_of_rows = cursor.execute(sql)
+                    print"number_of_rows is:",number_of_rows
+                    if number_of_rows > MAX_DB_Count:
+                        del_number = number_of_rows - MAX_DB_Count
+                        print"Delete number_of_rows is:",del_number
+                        sql = "delete from sensordata order by time limit %s" % del_number
+                        cursor.execute(sql)
+                        connection.commit()
+                    tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                    sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', %s)" % (SourceMACAddress, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                     cursor.execute(sql)
                     connection.commit()
-                tmp_time = time.localtime(int(p_sensor_data[2:10],16))
-                sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', %s)" % (SourceMACAddress, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
-                cursor.execute(sql)
-                connection.commit()
-            elif type == 2:
-                print("parameter = Rain")
-                sql = "select * from sensordata"
-                number_of_rows = cursor.execute(sql)
-                print"number_of_rows is:",number_of_rows
-                if number_of_rows > MAX_DB_Count:
-                    del_number = number_of_rows - MAX_DB_Count
-                    print"Delete number_of_rows is:",del_number
-                    sql = "delete from sensordata order by time limit %s" % del_number
+                elif db_type == 2:
+                    print("parameter = Rain")
+                    sql = "select * from sensordata"
+                    number_of_rows = cursor.execute(sql)
+                    print"number_of_rows is:",number_of_rows
+                    if number_of_rows > MAX_DB_Count:
+                        del_number = number_of_rows - MAX_DB_Count
+                        print"Delete number_of_rows is:",del_number
+                        sql = "delete from sensordata order by time limit %s" % del_number
+                        cursor.execute(sql)
+                        connection.commit()
+                    tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                    sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', %s)" % (SourceMACAddress, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                     cursor.execute(sql)
                     connection.commit()
-                tmp_time = time.localtime(int(p_sensor_data[2:10],16))
-                sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', %s)" % (SourceMACAddress, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
-                cursor.execute(sql)
-                connection.commit()
-            elif type == 3:
-                print("parameter = Lora")
-                sql = "select * from sensordata"
-                number_of_rows = cursor.execute(sql)
-                print"number_of_rows is:",number_of_rows
-                if number_of_rows > MAX_DB_Count:
-                    del_number = number_of_rows - MAX_DB_Count
-                    print"Delete number_of_rows is:",del_number
-                    sql = "delete from sensordata order by time limit %s" % del_number
+                elif db_type == 3:
+                    print("parameter = Lora")
+                    sql = "select * from sensordata"
+                    number_of_rows = cursor.execute(sql)
+                    print"number_of_rows is:",number_of_rows
+                    if number_of_rows > MAX_DB_Count:
+                        del_number = number_of_rows - MAX_DB_Count
+                        print"Delete number_of_rows is:",del_number
+                        sql = "delete from sensordata order by time limit %s" % del_number
+                        cursor.execute(sql)
+                        connection.commit()
+                    tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                    sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s')" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                     cursor.execute(sql)
                     connection.commit()
-                tmp_time = time.localtime(int(p_sensor_data[2:10],16))
-                sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s')" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
-                cursor.execute(sql)
-                connection.commit()
-            elif type == 4:
-                print("parameter = Correction Time")
-                sql = "select * from correctiontime"
-                number_of_rows = cursor.execute(sql)
-                print"number_of_rows is:",number_of_rows
-                if number_of_rows > MAX_DB_Count:
-                    del_number = number_of_rows - MAX_DB_Count
-                    print"Delete number_of_rows is:",del_number
-                    sql = "delete from correctiontime order by time limit %s" % del_number
+                elif db_type == 4:
+                    print("parameter = Correction Time")
+                    sql = "select * from correctiontime"
+                    number_of_rows = cursor.execute(sql)
+                    print"number_of_rows is:",number_of_rows
+                    if number_of_rows > MAX_DB_Count:
+                        del_number = number_of_rows - MAX_DB_Count
+                        print"Delete number_of_rows is:",del_number
+                        sql = "delete from correctiontime order by time limit %s" % del_number
+                        cursor.execute(sql)
+                        connection.commit()
+                    tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                    sql = "insert ignore into correctiontime (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s')" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                     cursor.execute(sql)
                     connection.commit()
-                tmp_time = time.localtime(int(p_sensor_data[2:10],16))
-                sql = "insert ignore into correctiontime (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s')" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
-                cursor.execute(sql)
-                connection.commit()
-            elif type == 5:
-                print("parameter = Retransmition")
-                sql = "select * from retransmission"
-                number_of_rows = cursor.execute(sql)
-                print"number_of_rows is:",number_of_rows
-                if number_of_rows > MAX_DB_Count:
-                    del_number = number_of_rows - MAX_DB_Count
-                    print"Delete number_of_rows is:",del_number
-                    sql = "delete from retransmission order by time limit %s" % del_number
+                elif db_type == 5:
+                    print("parameter = Retransmition")
+                    sql = "select * from retransmission"
+                    number_of_rows = cursor.execute(sql)
+                    print"number_of_rows is:",number_of_rows
+                    if number_of_rows > MAX_DB_Count:
+                        del_number = number_of_rows - MAX_DB_Count
+                        print"Delete number_of_rows is:",del_number
+                        sql = "delete from retransmission order by time limit %s" % del_number
+                        cursor.execute(sql)
+                        connection.commit()
+                    tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                    time_interval = int(p_sensor_data[10:12],16)
+                    print "time_interval:",time_interval
+                    sql = "insert ignore into retransmission(source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s') ON DUPLICATE KEY UPDATE sended_flag =0" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                     cursor.execute(sql)
                     connection.commit()
-                tmp_time = time.localtime(int(p_sensor_data[2:10],16))
-                time_interval = int(p_sensor_data[10:12],16)
-                print "time_interval:",time_interval
-                sql = "insert ignore into retransmission(source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s') ON DUPLICATE KEY UPDATE sended_flag =0" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
-                cursor.execute(sql)
-                connection.commit()
-    finally:
-        print("connection close!")
-        connection.close()
-def connect_DB_select_data(type, sensor_mac, time, time_interval, sensor_data, sensor_count): #type 1: select data to retransmit 2: if doesn't exist select data then insert new retransmit data
+        finally:
+            print("connection close!")
+            connection.close()
+        g_db_mutex.release()
+
+def connect_DB_select_data(db_type, sensor_mac, time, time_interval, sensor_data, sensor_count): #db_type 1: select data to retransmit 2: if doesn't exist select data then insert new retransmit data
     # Connect to the database
     connection = pymysql.connect(host='localhost',
                                  user='root',
@@ -223,11 +233,11 @@ def connect_DB_select_data(type, sensor_mac, time, time_interval, sensor_data, s
             cursor.execute(sql)
             cursor.execute("USE sensor")
             print "sensor_mac:",sensor_mac
-            if type == 1:
+            if db_type == 1:
                 sql = "UPDATE sensordata SET retransmit_flag =1 where time >='%s' and time < DATE_ADD('%s', INTERVAL '%s' MINUTE) and source_mac_address='%s'" % (time, time, time_interval, sensor_mac)
                 cursor.execute(sql)
                 connection.commit()
-            elif type == 2:
+            elif db_type == 2:
                 sql = "select * from sensordata"
                 number_of_rows = cursor.execute(sql)
                 print"number_of_rows is:",number_of_rows
