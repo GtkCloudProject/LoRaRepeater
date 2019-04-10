@@ -58,6 +58,7 @@ Microwave_PC_ip_port = ('192.168.127.102',4007)
 my_dict_appskey = {}
 my_dict_nwkskey = {}
 
+MAC_Address=0
 Self_MAC_Level=0
 Endian = '>' #big-endian
 
@@ -115,7 +116,15 @@ def report_status_to_diagnosis_pc():
     try:
         print("Send sensor data to Diagnosis PC")
         sock1.send("== I/O Status Reporting ==\n")
-
+        # MAC address
+        if MAC_Address == 0:
+            io_status = "Can't get MAC Address\n"
+            print(io_status)
+            sock1.send(io_status)
+        else:
+            io_status = "MAC Address: %s \n" %(MAC_Address)
+            print(io_status)
+            sock1.send(io_status)
         # LoRa
         sub_p = subprocess.Popen("cat /tmp/lora_status", stdout=subprocess.PIPE, shell=True)
         (lora_status, err) = sub_p.communicate()
@@ -435,7 +444,7 @@ def get_sensor_data_from_DB(tablename):
         connection.close()
 
 #add by nick
-def update_sensor_data_to_DB(type, l_sensor_macAddr, l_sensor_data, l_sensor_frameCnt):
+def update_sensor_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_frameCnt):
     # Connect to the database
     connection = pymysql.connect(host='localhost',
                                  user='root',
@@ -451,24 +460,58 @@ def update_sensor_data_to_DB(type, l_sensor_macAddr, l_sensor_data, l_sensor_fra
                 cursor.execute("USE sensor")
             except:
                 print("No sensor DB")
-            if type == 1:
+            if db_type == 1:
                 print("update sensordata table")
                 if g_Sended_Flag ==0:
                     print("update sensordata table g_Sended_Flag ==0")
-                    sql = "update sensordata set sended_flag=1 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                    sql = "update sensordata set sended_flag=1, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 elif g_Retransmit_Flag ==1:
                     print("update sensordata table g_Retransmit_Flag ==1")
-                    sql = "update sensordata set retransmit_flag=0 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                    sql = "update sensordata set retransmit_flag=0, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
-            elif type == 2:
+            elif db_type == 2:
                 print("update correctiontime table")
-                sql = "update correctiontime set sended_flag=1 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                sql = "update correctiontime set sended_flag=1, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
-            elif type == 3:
+            elif db_type == 3:
                 print("update retransmission table")
-                sql = "update retransmission set sended_flag=1 where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                sql = "update retransmission set sended_flag=1, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                cursor.execute(sql)
+                connection.commit()
+    finally:
+        connection.close()
+#add by nick
+def delete_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_frameCnt):
+    # Connect to the database
+    connection = pymysql.connect(host='localhost',
+                                 user='root',
+                                 password='123456',
+                                 #db='sensor',
+                                 #charset='utf8mb4',
+                                 cursorclass=pymysql.cursors.DictCursor)
+
+    try:
+        with connection.cursor() as cursor:
+            print("connect to DB")
+            try:
+                cursor.execute("USE sensor")
+            except:
+                print("No sensor DB")
+            if db_type == 1:
+                print("delete sensordata table")
+                sql = "delete from sensordata where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                cursor.execute(sql)
+                connection.commit()
+            elif db_type == 2:
+                print("delete correctiontime table")
+                sql = "delete from correctiontime where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                cursor.execute(sql)
+                connection.commit()
+            elif db_type == 3:
+                print("delete retransmission table")
+                sql = "delete from  retransmission where source_MAC_AddressMAC_Address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
     finally:
@@ -688,7 +731,11 @@ def main():
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
-            if sensor_macAddr[0:2] in my_dict_appskey:
+            if (sensor_data_len %2) !=0 or sensor_data_len <18:
+                length_flag=0
+            else:
+                length_flag=1
+            if sensor_macAddr[0:2] in my_dict_appskey and length_flag==1:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
                 print("sensor_data:" + sensor_data )
@@ -702,8 +749,13 @@ def main():
                 return_state = ser.readlines()
                 #print(return_state)
             else:
-                print('Not in ABP Group Config Rule, so give up')
-                update_sensor_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
+                if length_flag ==0:
+                    print('Data length error, should not be odd or sensordata length less then 18!')
+                    delete_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
+                else:
+                    print('Not in ABP Group Config Rule, so give up')
+                    delete_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
+                    length_flag=0 #set flag=0 not show display
 
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
@@ -731,7 +783,7 @@ def main():
             except socket.error:
                 print"sock4 Radio socket error"
                 TCP_connect(Nport3_ip_port)
-            if Self_MAC_Level == recv_MAC_Level:
+            if Self_MAC_Level == recv_MAC_Level and length_flag==1:
                 try:
                     print("Send sensor data to Display")
                     combinestr = str(int(sensor_data[10:14],16))+str(int(sensor_data[14:16],16)).zfill(2)
@@ -786,6 +838,10 @@ def main():
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
+            if (sensor_data_len %2) !=0:
+                length_flag=0
+            else:
+                length_flag=1
             if sensor_macAddr[0:2] in my_dict_appskey:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
@@ -801,8 +857,12 @@ def main():
                 return_state = ser.readlines()
                 #print(return_state)
             else:
-                print('Not in ABP Group Config Rule, so give up')
-                update_sensor_data_to_DB(2, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
+                if length_flag ==0:
+                    print('Data length error, should not be odd!')
+                    delete_data_to_DB(1, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
+                else:
+                    print('Not in ABP Group Config Rule, so give up')
+                    delete_data_to_DB(2, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
 
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
@@ -850,6 +910,10 @@ def main():
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
+            if (sensor_data_len %2) !=0:
+                length_flag=0
+            else:
+                length_flag=1
             if sensor_macAddr[0:2] in my_dict_appskey:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
@@ -864,8 +928,12 @@ def main():
                 return_state = ser.readlines()
                 #print(return_state)
             else:
-                print('Not in ABP Group Config Rule, so give up')
-                update_sensor_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
+                if length_flag ==0:
+                    print('Data length error, should not be odd!')
+                    delete_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
+                else:
+                    print('Not in ABP Group Config Rule, so give up')
+                    delete_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
 
             if SENT_OK_TAG in return_state:
                 print("Result: SENT.")
