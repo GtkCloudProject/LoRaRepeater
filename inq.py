@@ -272,96 +272,100 @@ def on_connect(client, userdata, flags, rc):
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
+    json_count1 = 0
     try:
         # print(msg.topic+" "+str(msg.payload))
         #print('Message incoming')
         #print(msg.topic)
         #print(msg.payload)
         json_data = msg.payload
-        sensor_mac = json.loads(json_data)[0]['macAddr']
-        sensor_data = json.loads(json_data)[0]['data']
-        sensor_count = json.loads(json_data)[0]['frameCnt']
-        nFrameCnt = json.loads(json_data)[0]['frameCnt']
-        print"Data is:",sensor_data
-        Data_Len = len(sensor_data)
-        print"Data_Len is:",Data_Len
-        Command = int(sensor_data[0:2],16)
-        recv_mac_level = Command>>5
-        CMD = (Command>>2) & ~( 1<<3 | 1<<4 | 1<<5)
-        Data_type = Command & ~( 1<<2 | 1<<3 | 1<<4 | 1<<5 | 1<<6 | 1<<7 )
-# Store data to DB
-# Check the command if not sensor data do not insert to DB
-        global CorrectionTimeFlag, CorrectionTimeCounter
-        if CMD == 0 and (Data_type == 1 or Data_type == 2):
-            print"Receive Sensor data from lora"
-            if Self_MAC_Level >= recv_mac_level:
-                print("Ready to put sensor data to DB")
-                CorrectionTimeCounter += 1
-                if CorrectionTimeCounter == 6: #each time forward will add 3 counter
-                    CorrectionTimeFlag = 0
-                    CorrectionTimeCounter = 0
-                connect_DB_put_data(3, sensor_mac[8:16], sensor_data, sensor_count)
-        elif Data_type == 0 and CMD == 1:
-            print("Receive Correction Lora Packet")
-            print "MAC_Address:",MAC_Address
-            print "sensor_mac[8:16]:",sensor_mac[8:16]
-            if 'ffffff' in sensor_mac[8:16] or 'FFFFFF' in sensor_mac[8:16]:
-                print("Receive Broadcast Correction Packet")
-                #replace system time here by nick
-                if CorrectionTimeFlag == 0: #0: ready to replace system time 1: already replace system time wait for cool down
-                    correcttime = sensor_data[2:10]
-                    print "correcttime:",correcttime
-                    tmp_time = time.localtime(int(correcttime,16))
-                    #print "tmp_time:",tmp_time
-                    strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
-                    print "strtime:",strtime
-                    os.system('date -s "%s"' % strtime)
-                    CorrectionTimeFlag = 1
-                    CorrectionTimeCounter = 0
-                else:
-                    print"Already replace system time wait for cool down!"
-                #pepare correction time ack
-                if Self_MAC_Level <= recv_mac_level:
-                    print("Ready to put correction time data to DB")
-                    connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count) #forward broadcast correction time
-                    connect_DB_put_data(4, MAC_Address, sensor_data, sensor_count) #send ack correction
-            else:
+        json_array_size = len(json.loads(json_data))
+        while json_count1 < json_array_size:
+            sensor_mac = json.loads(json_data)[json_count1]['macAddr']
+            sensor_data = json.loads(json_data)[json_count1]['data']
+            sensor_count = json.loads(json_data)[json_count1]['frameCnt']
+            nFrameCnt = json.loads(json_data)[json_count1]['frameCnt']
+            print"Data is:",sensor_data
+            Data_Len = len(sensor_data)
+            print"Data_Len is:",Data_Len
+            Command = int(sensor_data[0:2],16)
+            recv_mac_level = Command>>5
+            CMD = (Command>>2) & ~( 1<<3 | 1<<4 | 1<<5)
+            Data_type = Command & ~( 1<<2 | 1<<3 | 1<<4 | 1<<5 | 1<<6 | 1<<7 )
+            # Store data to DB
+            # Check the command if not sensor data do not insert to DB
+            global CorrectionTimeFlag, CorrectionTimeCounter
+            if CMD == 0 and (Data_type == 1 or Data_type == 2):
+                print"Receive Sensor data from lora"
                 if Self_MAC_Level >= recv_mac_level:
-                    print("Forward Correction 'ACK' Packet")
-                    connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count)#forward ack correction
-        elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 12:
-            print("Receive Retransmit Lora Packet")
-            #select witch sensor data need to retransmit
-            retransmit_time = sensor_data[2:10]
-            tmp_time = time.localtime(int(retransmit_time,16))
-            strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
-            print "strtime:",strtime
-            time_interval = int(sensor_data[10:12],16)
-            print "time_interval:",time_interval
-            if Self_MAC_Level <= recv_mac_level:
-                print("Ready to put retransmit data to DB")
-                connect_DB_put_data(5, sensor_mac[8:16], sensor_data, sensor_count)
-            if sensor_mac[8:16] == MAC_Address:
-                print("Select Re-transmit data from DB")
-                connect_DB_select_data(1, sensor_mac[8:16], strtime, time_interval, sensor_data , sensor_count)
-        elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 18:
-            print"Receive Retransmit ACK data from lora"
-            if Self_MAC_Level > recv_mac_level:
-                print("Ready to put Retransmit sensor data to DB")
+                    print("Ready to put sensor data to DB")
+                    CorrectionTimeCounter += 1
+                    if CorrectionTimeCounter == 6: #each time forward will add 3 counter
+                        CorrectionTimeFlag = 0
+                        CorrectionTimeCounter = 0
+                    connect_DB_put_data(3, sensor_mac[8:16], sensor_data, sensor_count)
+            elif Data_type == 0 and CMD == 1:
+                print("Receive Correction Lora Packet")
+                print "MAC_Address:",MAC_Address
+                print "sensor_mac[8:16]:",sensor_mac[8:16]
+                if 'ffffff' in sensor_mac[8:16] or 'FFFFFF' in sensor_mac[8:16]:
+                    print("Receive Broadcast Correction Packet")
+                    #replace system time here by nick
+                    if CorrectionTimeFlag == 0: #0: ready to replace system time 1: already replace system time wait for cool down
+                        correcttime = sensor_data[2:10]
+                        print "correcttime:",correcttime
+                        tmp_time = time.localtime(int(correcttime,16))
+                        #print "tmp_time:",tmp_time
+                        strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
+                        print "strtime:",strtime
+                        os.system('date -s "%s"' % strtime)
+                        CorrectionTimeFlag = 1
+                        CorrectionTimeCounter = 0
+                    else:
+                        print"Already replace system time wait for cool down!"
+                    #pepare correction time ack
+                    if Self_MAC_Level <= recv_mac_level:
+                        print("Ready to put correction time data to DB")
+                        connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count) #forward broadcast correction time
+                        connect_DB_put_data(4, MAC_Address, sensor_data, sensor_count) #send ack correction
+                else:
+                    if Self_MAC_Level >= recv_mac_level:
+                        print("Forward Correction 'ACK' Packet")
+                        connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count)#forward ack correction
+            elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 12:
+                print("Receive Retransmit Lora Packet")
                 #select witch sensor data need to retransmit
                 retransmit_time = sensor_data[2:10]
                 tmp_time = time.localtime(int(retransmit_time,16))
                 strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
                 print "strtime:",strtime
-                time_interval = 0
-                #print "time_interval:",time_interval
-                connect_DB_select_data(2, sensor_mac[8:16], strtime, time_interval, sensor_data , sensor_count)
-        else:
-            print("not sensor data lora packet")
-            print(sensor_data)
-            if sensor_data == LORA_VERIFY_STR:
-                os.system("echo \"0\" > /tmp/lora_status")
-                os.system("sync")
+                time_interval = int(sensor_data[10:12],16)
+                print "time_interval:",time_interval
+                if Self_MAC_Level <= recv_mac_level:
+                    print("Ready to put retransmit data to DB")
+                    connect_DB_put_data(5, sensor_mac[8:16], sensor_data, sensor_count)
+                if sensor_mac[8:16] == MAC_Address:
+                    print("Select Re-transmit data from DB")
+                    connect_DB_select_data(1, sensor_mac[8:16], strtime, time_interval, sensor_data , sensor_count)
+            elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 18:
+                print"Receive Retransmit ACK data from lora"
+                if Self_MAC_Level > recv_mac_level:
+                    print("Ready to put Retransmit sensor data to DB")
+                    #select witch sensor data need to retransmit
+                    retransmit_time = sensor_data[2:10]
+                    tmp_time = time.localtime(int(retransmit_time,16))
+                    strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
+                    print "strtime:",strtime
+                    time_interval = 0
+                    #print "time_interval:",time_interval
+                    connect_DB_select_data(2, sensor_mac[8:16], strtime, time_interval, sensor_data , sensor_count)
+            else:
+                print("not sensor data lora packet")
+                print(sensor_data)
+                if sensor_data == LORA_VERIFY_STR:
+                    os.system("echo \"0\" > /tmp/lora_status")
+                    os.system("sync")
+            json_count1 = json_count1 + 1
 
     except:
         print('Received a non-UTF8 msg')
