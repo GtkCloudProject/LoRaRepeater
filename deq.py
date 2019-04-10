@@ -762,27 +762,30 @@ def main():
                 #sended than update DB change sended flag to 1 by nick
                 update_sensor_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
                 Data_need_to_send = None
+                sent_flag=1
             else:
                 print("Result: Send FAIL!")
+                sent_flag=0
             #Send sensor data to application server or Microwave PC or Radio
-            try:
-                print("Send sensor data to Application Server")
-                sock2.send(sensor_macAddr+sensor_data)
-            except socket.error:
-                print"sock2 Application Server socket error"
-                TCP_connect(Application_Server_ip_port)
-            try:
-                print("Send sensor data to Microwave PC")
-                sock3.send(sensor_macAddr+sensor_data)
-            except socket.error:
-                print"sock3 Microwave PC socket error"
-                TCP_connect(Microwave_PC_ip_port)
-            try:
-                print("Send sensor data to Radio")
-                sock4.send(sensor_macAddr+sensor_data)
-            except socket.error:
-                print"sock4 Radio socket error"
-                TCP_connect(Nport3_ip_port)
+            if sent_flag==1:
+                try:
+                    print("Send sensor data to Application Server")
+                    sock2.send(sensor_macAddr+sensor_data)
+                except socket.error:
+                    print"sock2 Application Server socket error"
+                    TCP_connect(Application_Server_ip_port)
+                try:
+                    print("Send sensor data to Microwave PC")
+                    sock3.send(sensor_macAddr+sensor_data)
+                except socket.error:
+                    print"sock3 Microwave PC socket error"
+                    TCP_connect(Microwave_PC_ip_port)
+                try:
+                    print("Send sensor data to Radio")
+                    sock4.send(sensor_macAddr+sensor_data)
+                except socket.error:
+                    print"sock4 Radio socket error"
+                    TCP_connect(Nport3_ip_port)
             if Self_MAC_Level == recv_MAC_Level and length_flag==1:
                 try:
                     print("Send sensor data to Display")
@@ -869,10 +872,12 @@ def main():
                 #sended than update DB change sended flag to 1 by nick
                 update_sensor_data_to_DB(2, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
                 Correction_Time_need_to_send = None
+                sent_flag=1
             else:
                 print("Result: Send FAIL!")
+                sent_flag=0
 
-            if 'ffffff' not in sensor_macAddr and 'FFFFFF' not in sensor_macAddr:
+            if 'ffffff' not in sensor_macAddr and 'FFFFFF' not in sensor_macAddr and sent_flag==1:
                 #Send correctiontime ACK to application server or Microwave PC or Radio
                 try:
                     print("Send correctiontime ACK to Application Server")
@@ -940,8 +945,10 @@ def main():
                 #sended than update DB change sended flag to 1 by nick
                 update_sensor_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
                 Retransmission_need_to_send = None
+                sent_flag=1
             else:
                 print("Result: Send FAIL!")
+                sent_flag=0
 
         #To send LoRa repeater I/O status to  Diagnosis PC
         if g_sock1_flag == 0:
