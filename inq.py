@@ -124,13 +124,13 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
                 print "p_sensor_mac:",p_sensor_mac
                 if db_type <=3:
                     print("DB type <=3")
-                    sql = "create table if not exists sensordata(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, retransmit_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
+                    sql = "create table if not exists sensordata(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, retransmit_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, last_sent_time timestamp NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
                 elif db_type == 4:
                     print("DB type == 4")
-                    sql = "create table if not exists correctiontime(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
+                    sql = "create table if not exists correctiontime(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, last_sent_time timestamp NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
                 elif db_type == 5:
                     print("DB type == 5")
-                    sql = "create table if not exists retransmission(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL,UNIQUE(source_mac_address, time, frame_count))"
+                    sql = "create table if not exists retransmission(source_mac_address CHAR(8) NOT NULL,time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, raw_data CHAR(22), sended_flag BOOLEAN NOT NULL default 0, frame_count CHAR(8) NOT NULL, last_sent_time timestamp NOT NULL, UNIQUE(source_mac_address, time, frame_count))"
                 cursor.execute(sql)
                 SourceMACAddress = MAC_Address
                 if db_type == 1:
@@ -247,9 +247,14 @@ def connect_DB_select_data(db_type, sensor_mac, time, time_interval, sensor_data
                     sql = "delete from sensordata order by time limit %s" % del_number
                     cursor.execute(sql)
                     connection.commit()
-                sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count, sended_flag, retransmit_flag) values('%s', '%s', '%s', '%s', 1, 1) ON DUPLICATE KEY UPDATE retransmit_flag =1" % (sensor_mac, time, sensor_data, sensor_count)
+                sql = "select sended_flag, retransmit_flag, raw_data, source_mac_address, frame_count, last_sent_time from sensordata WHERE last_sent_time < DATE_SUB(now(), INTERVAL 2 MINUTE) limit 1"
                 cursor.execute(sql)
-                connection.commit()
+                if(cursor.rowcount>0):
+                    sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count, sended_flag, retransmit_flag) values('%s', '%s', '%s', '%s', 1, 1) ON DUPLICATE KEY UPDATE retransmit_flag =1" % (sensor_mac, time, sensor_data, sensor_count)
+                    cursor.execute(sql)
+                    connection.commit()
+                else:
+                    print("update retransmit_flag fail, wait colddown 2 mins")
             if(cursor.rowcount>0):
                 print "Result Count:",cursor.rowcount
             else:
