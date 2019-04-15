@@ -26,12 +26,12 @@ update-rc.d -f lora_repeater_starter remove;
 update-rc.d lora_repeater_starter defaults 99;
 cd /mnt/data/LoRaRepeater/FTP_config
 cp *.* /etc/
-mkdir /mnt/data/Ftpdir
-cd /mnt/data/Ftpdir
-rm repeater_upgrade.zip
 userdel -r gemtek
+mkdir -p /mnt/data/Ftpdir
 useradd -d /mnt/data/Ftpdir -s /usr/sbin/nologin gemtek
 echo -e 'gemtek123\ngemtek123\n' | sudo passwd gemtek
 chown gemtek:gemtek /mnt/data/Ftpdir
+sed -i 's/pam_shells.so/pam_nologin.so/g' /etc/pam.d/vsftpd
 service vsftpd restart
+cd /mnt/data/LoRaRepeater
 echo "Finished: /etc/init.d/lora_repeater_starter start or reboot wil be run";
