@@ -17,7 +17,7 @@ from binascii import unhexlify
 
 USB_DEV_ARRAY = ["/dev/ttyS0"]
 
-MY_SLEEP_INTERVAL = 3.5
+MY_SLEEP_INTERVAL = 4.5
 MY_ALIVE_INTERVAL = 86400
 
 MY_MQTT_QUEUE_FILE_PATH = "/var/lora_repeater/queue/"
@@ -42,10 +42,13 @@ REPLY_STRING = "+CDEVADDR:"
 Data_need_to_send = None
 Correction_Time_need_to_send = None
 Retransmission_need_to_send = None
-g_Frame_Count = ""
+g_Frame_Count = 0
 g_Sended_Flag = ""
 g_Retransmit_Flag = ""
 Source_MAC_address = ""
+
+g_minCnt = 0
+g_minCnt_tbl_name = ""
 
 Nport1_ip_port = ('192.168.127.88',4001) #water meter
 Nport2_ip_port = ('192.168.127.88',4002) #rain meter
@@ -372,16 +375,16 @@ def get_sensor_data_from_DB(tablename):
                 connection.rollback()
                 print("No sensor DB")
             global Source_MAC_address
-            global Retransmission_need_to_send
             global g_Frame_Count
             global g_Sended_Flag
             global g_Retransmit_Flag
             global Data_need_to_send
             global Correction_Time_need_to_send
+            global Retransmission_need_to_send
             if tablename == 'sensordata':
                 print "tablename == sensordata"
                 try:
-                    sql = "select sended_flag, retransmit_flag, raw_data, source_mac_address, frame_count from sensordata WHERE sended_flag='0' or retransmit_flag='1' limit 1"
+                    sql = "select sended_flag, retransmit_flag, raw_data, source_mac_address, frame_count from sensordata WHERE sended_flag='0' or retransmit_flag='1' order by frame_count limit 1"
                     cursor.execute(sql)
                     #print cursor.rowcount
                     if(cursor.rowcount>0):
@@ -393,7 +396,7 @@ def get_sensor_data_from_DB(tablename):
                             g_Retransmit_Flag = row["retransmit_flag"]
                             print "Source_MAC_address: " ,Source_MAC_address
                             print "Data_need_to_send: ",Data_need_to_send
-                            print "Frame Count:", g_Frame_Count
+                            print "g_Frame_Count:", g_Frame_Count
                             print "g_Sended_Flag:", g_Sended_Flag
                             print "g_Retransmit_Flag:", g_Retransmit_Flag
                     else:
@@ -404,7 +407,7 @@ def get_sensor_data_from_DB(tablename):
             elif tablename == 'correctiontime':
                 print "tablename == correctiontime"
                 try:
-                    sql = "select source_mac_address, sended_flag, raw_data, frame_count from correctiontime WHERE sended_flag='0' limit 1"
+                    sql = "select source_mac_address, sended_flag, raw_data, frame_count from correctiontime WHERE sended_flag='0' order by frame_count limit 1"
                     cursor.execute(sql)
                     #print cursor.rowcount
                     if(cursor.rowcount>0):
@@ -413,7 +416,7 @@ def get_sensor_data_from_DB(tablename):
                             g_Frame_Count = row["frame_count"]
                             Source_MAC_address = row["source_mac_address"]
                             print "Correction_Time_need_to_send: ",Correction_Time_need_to_send
-                            print "Frame Count:", g_Frame_Count
+                            print "g_Frame_Count:", g_Frame_Count
                             print "Source_MAC_address: " ,Source_MAC_address
                     else:
                         print "DB return null"
@@ -424,7 +427,7 @@ def get_sensor_data_from_DB(tablename):
             elif tablename == 'retransmission':
                 print "tablename == retransmission"
                 try:
-                    sql = "select source_mac_address, sended_flag, raw_data, source_mac_address, frame_count from retransmission WHERE sended_flag='0' limit 1"
+                    sql = "select source_mac_address, sended_flag, raw_data, frame_count from retransmission WHERE sended_flag='0' order by frame_count limit 1"
                     cursor.execute(sql)
                     #print cursor.rowcount
                     if(cursor.rowcount>0):
@@ -434,7 +437,7 @@ def get_sensor_data_from_DB(tablename):
                             g_Frame_Count = row["frame_count"]
                             print "Source_MAC_address: " ,Source_MAC_address
                             print "Retransmission_need_to_send: ",Retransmission_need_to_send
-                            print "Frame Count:", g_Frame_Count
+                            print "g_Frame_Count:", g_Frame_Count
                     else:
                         print "DB return null"
                         Retransmission_need_to_send = None
@@ -511,9 +514,49 @@ def delete_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_frameCn
                 connection.commit()
             elif db_type == 3:
                 print("delete retransmission table")
-                sql = "delete from  retransmission where source_MAC_AddressMAC_Address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
+                sql = "delete from  retransmission where source_MAC_Address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
+    finally:
+        connection.close()
+
+#add by nick
+def select_min_frame_count_from_DB():
+    global g_minCnt
+    global g_minCnt_tbl_name
+    # Connect to the database
+    connection = pymysql.connect(host='localhost',
+                                 user='root',
+                                 password='123456',
+                                 #db='sensor',
+                                 #charset='utf8mb4',
+                                 cursorclass=pymysql.cursors.DictCursor)
+
+    try:
+        with connection.cursor() as cursor:
+            print("connect to DB")
+            try:
+                cursor.execute("USE sensor")
+            except:
+                print("No sensor DB")
+            print("select_min_frame_count_from_DB")
+            try:
+                sql="select min(frame_count) as minCnt, tbl_name from ((select sended_flag, frame_count, 0 as retransmit_flag, 'retransmission' as tbl_name from retransmission where sended_flag=0 ) union (select sended_flag, frame_count, 0 as retransmit_flag, 'correctiontime' as tbl_name from correctiontime where sended_flag=0) union (select sended_flag, frame_count, retransmit_flag, 'sensordata' as tbl_name from sensordata where sended_flag=0 or retransmit_flag=1)) as summaryTbl group by tbl_name limit 1"
+                cursor.execute(sql)
+                connection.commit()
+                #print cursor.rowcount
+                if(cursor.rowcount>0):
+                    for row in cursor:
+                        g_minCnt_tbl_name = row["tbl_name"]
+                        g_minCnt = row["minCnt"]
+                        print "Select Table Name: " ,g_minCnt_tbl_name
+                        print "Min Counter: ",g_minCnt
+                else:
+                    g_minCnt_tbl_name = None
+                    g_minCnt = None
+                    print "select_min_frame_count_from_DB, DB return null"
+            except:
+                connection.rollback()
     finally:
         connection.close()
 
@@ -711,8 +754,21 @@ def main():
                     g_sock5_flag = -1
                     close_socket(sock5)
 
-        tablename = 'sensordata'
-        get_sensor_data_from_DB(tablename)
+        select_min_frame_count_from_DB()
+        print "g_minCnt_tbl_name:",g_minCnt_tbl_name
+        if g_minCnt_tbl_name != None:
+            if g_minCnt_tbl_name == 'sensordata':
+                tablename = 'sensordata'
+                get_sensor_data_from_DB(tablename)
+            elif g_minCnt_tbl_name == 'correctiontime':
+                tablename = 'correctiontime'
+                get_sensor_data_from_DB(tablename)
+            elif g_minCnt_tbl_name == 'retransmission':
+                tablename = 'retransmission'
+                get_sensor_data_from_DB(tablename)
+        else:
+            print "No data need to be send"
+
         return_state = ""
         if Data_need_to_send != None:
             print "Sensor data send"
@@ -731,6 +787,7 @@ def main():
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
+            print"sensor_frameCnt:",sensor_frameCnt
             if (sensor_data_len %2) !=0 or sensor_data_len <18:
                 length_flag=0
             else:
@@ -739,7 +796,7 @@ def main():
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
                 print("sensor_data:" + sensor_data )
-                data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
+                data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + str(sensor_frameCnt) + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
                 data_sending = str(data_sending)
                 print data_sending
                 ser.flushInput()
@@ -823,8 +880,7 @@ def main():
                     TCP_connect(Nport4_ip_port)
         else:
             print("Waiting for incoming queue")
-        tablename = 'correctiontime'
-        get_sensor_data_from_DB(tablename)
+
         return_state = ""
         if Correction_Time_need_to_send != None:
             print"Correction time send"
@@ -841,6 +897,7 @@ def main():
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
+            print"sensor_frameCnt:",sensor_frameCnt
             if (sensor_data_len %2) !=0:
                 length_flag=0
             else:
@@ -849,7 +906,7 @@ def main():
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
                 print("sensor_data:" + sensor_data )
-                data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
+                data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + str(sensor_frameCnt) + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
                 data_sending = str(data_sending)
                 print data_sending
                 #update DB sended flag here when sended and return status = "tx done        " bu nick
@@ -899,8 +956,6 @@ def main():
                     TCP_connect(Nport3_ip_port)
         #time.sleep(MY_SLEEP_INTERVAL)
 
-        tablename = 'retransmission'
-        get_sensor_data_from_DB(tablename)
         return_state = ""
         if Retransmission_need_to_send != None:
             print"Retransmit send"
@@ -915,6 +970,7 @@ def main():
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
+            print"sensor_frameCnt:",sensor_frameCnt
             if (sensor_data_len %2) !=0:
                 length_flag=0
             else:
@@ -923,7 +979,7 @@ def main():
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
                 print("sensor_data:" + sensor_data )
-                data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + sensor_frameCnt + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
+                data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + str(sensor_frameCnt) + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
                 data_sending = str(data_sending)
                 print data_sending
                 ser.flushInput()
