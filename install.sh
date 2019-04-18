@@ -19,11 +19,18 @@ killall check_repeater.sh
 killall inq.py deq.py
 
 echo "To install lora_repeater packages"
+#To setup starting daemon after booting
 cd /mnt/data/LoRaRepeater
 cp lora_repeater_starter /etc/init.d/
 chmod 755 /mnt/data/LoRaRepeater/inq.py /mnt/data/LoRaRepeater/deq.py /mnt/data/LoRaRepeater/check_repeater.sh /etc/init.d/lora_repeater_starter
 update-rc.d -f lora_repeater_starter remove;
 update-rc.d lora_repeater_starter defaults 99;
+
+#To reconfig crontab
+crontab -r
+(crontab -l ; echo "00 3 * * * sh /mnt/data/LoRaRepeater/back_up_DB.sh") | crontab
+
+#To reconfig vsftp server
 cd /mnt/data/LoRaRepeater/FTP_config
 cp *.* /etc/
 userdel -r gemtek
