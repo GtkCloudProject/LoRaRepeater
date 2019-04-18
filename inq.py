@@ -203,7 +203,7 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
                         cursor.execute(sql)
                         connection.commit()
                     tmp_time = time.localtime(int(p_sensor_data[2:10],16))
-                    sql = "select sended_flag, raw_data, source_mac_address, frame_count, last_sent_time from correctiontime WHERE last_sent_time > DATE_SUB(now(), INTERVAL 2 MINUTE) and source_mac_address='%s'" % (p_sensor_mac)
+                    sql = "select sended_flag, raw_data, source_mac_address, frame_count, last_sent_time from correctiontime WHERE last_sent_time > DATE_SUB(now(), INTERVAL 2 MINUTE) and last_sent_time < now() and source_mac_address='%s'" % (p_sensor_mac)
                     cursor.execute(sql)
                     print "cursor.rowcount:",cursor.rowcount
                     if(cursor.rowcount==0):
@@ -294,7 +294,7 @@ def connect_DB_select_data(db_type, sensor_mac, time, time_interval, sensor_data
                     sql = "delete from sensordata order by time limit %s" % del_number
                     cursor.execute(sql)
                     connection.commit()
-                sql = "select sended_flag, retransmit_flag, raw_data, source_mac_address, frame_count, last_sent_time from sensordata WHERE last_sent_time > DATE_SUB(now(), INTERVAL 2 MINUTE) and retransmit_flag =1"
+                sql = "select sended_flag, retransmit_flag, raw_data, source_mac_address, frame_count, last_sent_time from sensordata WHERE last_sent_time > DATE_SUB(now(), INTERVAL 2 MINUTE) and source_mac_address='%s' and frame_count='%s'" % (sensor_mac, sensor_count)
                 cursor.execute(sql)
                 if(cursor.rowcount==0):
                     sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count, sended_flag, retransmit_flag) values('%s', '%s', '%s', '%s', 1, 1) ON DUPLICATE KEY UPDATE retransmit_flag =1, last_sent_time=now()" % (sensor_mac, time, sensor_data, sensor_count)
