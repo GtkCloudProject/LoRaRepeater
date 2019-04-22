@@ -20,12 +20,7 @@ USB_DEV_ARRAY = ["/dev/ttyS0"]
 MY_SLEEP_INTERVAL = 4.5
 MY_ALIVE_INTERVAL = 86400
 
-MY_MQTT_QUEUE_FILE_PATH = "/var/lora_repeater/queue/"
-MY_SENDING_FILE_PATH = "/var/lora_repeater/sending/"
-MY_SENT_FILE_PATH = "/var/lora_repeater/sent/"
-MY_SEND_FAIL_FILE_PATH = "/var/lora_repeater/fail/"
-MY_LOG_FILE_PATH = "/var/lora_repeater/log/"
-
+MY_LOG_FILE_PATH = "/mnt/data/Ftpdir/"
 MY_LOG_FILENAME = MY_LOG_FILE_PATH + "deq.log"
 
 MY_NODE_MAC_ADDR = ""
@@ -93,6 +88,23 @@ g_socket_list = []
 #select timeout
 SELECT_TIMEOUT = 1
 
+# Set up a specific logger with our desired output level
+my_logger = logging.getLogger('dequeue')
+# Add the log message handler to the logger
+my_logger.setLevel(logging.DEBUG)
+handler = RotatingFileHandler(MY_LOG_FILENAME, maxBytes=2048000, backupCount=10)
+# create a logging format
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+my_logger.addHandler(handler)
+my_logger.info("deq.py started!!!")
+# example
+# my_logger.debug('debug message')
+# my_logger.info('info message')
+# my_logger.warn('warn message')
+# my_logger.error('error message')
+# my_logger.critical('critical message')
+
 #To close socket
 def close_socket(sock_c):
     global g_socket_list
@@ -117,16 +129,16 @@ def report_status_to_diagnosis_pc():
     global g_sock1_flag
 
     try:
-        print("Send sensor data to Diagnosis PC")
+        my_logger.info("Send sensor data to Diagnosis PC")
         sock1.send("== I/O Status Reporting ==\n")
         # MAC address
         if MAC_Address == 0:
             io_status = "Can't get MAC Address\n"
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
         else:
             io_status = "MAC Address: %s \n" %(MAC_Address)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
         # LoRa
         sub_p = subprocess.Popen("cat /tmp/lora_status", stdout=subprocess.PIPE, shell=True)
@@ -138,11 +150,11 @@ def report_status_to_diagnosis_pc():
 
         if lora_status == 0:
             io_status = "LoRa Status %s \n" %(STATUS_OK)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
         else:
             io_status = "LoRa Status %s \n" %(STATUS_FAIL)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
 
         # N port port 1
@@ -155,11 +167,11 @@ def report_status_to_diagnosis_pc():
 
         if g_Nport1_ip_port_status == 0:
             io_status = "N Port Port 1 Status %s \n" %(STATUS_OK)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
         else:
             io_status = "N Port Port 1 Status %s \n" %(STATUS_FAIL)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
 
         # N port port 2
@@ -172,57 +184,57 @@ def report_status_to_diagnosis_pc():
 
         if g_Nport2_ip_port_status == 0:
             io_status = "N Port Port 2 Status %s \n" %(STATUS_OK)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
         else:
             io_status = "N Port Port 2 Status %s \n" %(STATUS_FAIL)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
 
         # N port port 3
         if g_Nport3_ip_port_status == 0:
             io_status = "N Port Port 3 Status %s \n" %(STATUS_OK)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
         else:
             io_status = "N Port Port 3 Status %s \n" %(STATUS_FAIL)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
 
         # N port port 4
         if g_Nport4_ip_port_status == 0:
             io_status = "N Port Port 4 Status %s \n" %(STATUS_OK)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
         else:
             io_status = "N Port Port 4 Status %s \n" %(STATUS_FAIL)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
 
         #Application Server
         if g_Application_Server_ip_port_status == 0:
             io_status = "Application_Server Status %s \n" %(STATUS_OK)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
         else:
             io_status = "Application_Server Status %s \n" %(STATUS_FAIL)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
 
         #Microwave_PC
         if g_Microwave_PC_ip_port_status == 0:
             io_status = "Microwave PC Status %s \n" %(STATUS_OK)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
         else:
             io_status = "Microwave PC Status %s \n" %(STATUS_FAIL)
-            print(io_status)
+            my_logger.info(io_status)
             sock1.send(io_status)
 
         sock1.send("\n")
 
     except socket.error:
-        print"sock1 Diagnosis_PC socket error"
+        my_logger.info("sock1 Diagnosis_PC socket error")
         g_sock1_flag = -1
         close_socket(sock1)
 
@@ -252,11 +264,11 @@ def TCP_connect(name):
             sock1.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock1.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock1.connect(Diagnosis_PC_ip_port)
-            print "sock1 Diagnosis PC connect"
+            my_logger.info("sock1 Diagnosis PC connect")
             g_sock1_flag = 0
             g_socket_list.append(sock1)
         except:
-            print "sock1 Diagnosis PC connect error"
+            my_logger.info("sock1 Diagnosis PC connect error")
             g_sock1_flag = -1
             close_socket(sock1)
             pass
@@ -268,12 +280,12 @@ def TCP_connect(name):
             sock2.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock2.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock2.connect(Application_Server_ip_port)
-            print "sock2 Application Server connect"
+            my_logger.info("sock2 Application Server connect")
             g_Application_Server_ip_port_status = 0
             g_sock2_flag = 0
             g_socket_list.append(sock2)
         except:
-            print"sock2 Application Server connect error"
+            my_logger.info("sock2 Application Server connect error")
             g_Application_Server_ip_port_status = -1
             g_sock2_flag = -1
             close_socket(sock2)
@@ -286,12 +298,12 @@ def TCP_connect(name):
             sock3.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock3.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock3.connect(Microwave_PC_ip_port)
-            print "sock3 Microwave PC connect"
+            my_logger.info("sock3 Microwave PC connect")
             g_Microwave_PC_ip_port_status = 0
             g_sock3_flag = 0
             g_socket_list.append(sock3)
         except:
-            print"sock3 Microwave PC connect error"
+            my_logger.info("sock3 Microwave PC connect error")
             g_Microwave_PC_ip_port_status = -1
             g_sock3_flag = -1
             close_socket(sock3)
@@ -304,12 +316,12 @@ def TCP_connect(name):
             sock4.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock4.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock4.connect(Nport3_ip_port)
-            print "sock4 Radio connect"
+            my_logger.info("sock4 Radio connect")
             g_Nport3_ip_port_status = 0
             g_sock4_flag = 0
             g_socket_list.append(sock4)
         except:
-            print"sock4 Radio connect error"
+            my_logger.info("sock4 Radio connect error")
             g_Nport3_ip_port_status = -1
             g_sock4_flag = -1
             close_socket(sock4)
@@ -322,12 +334,12 @@ def TCP_connect(name):
             sock5.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock5.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock5.connect(Nport4_ip_port)
-            print "sock5 Display connect"
+            my_logger.info("sock5 Display connect")
             g_Nport4_ip_port_status = 0
             g_sock5_flag = 0
             g_socket_list.append(sock5)
         except:
-            print"sock5 Display connect error"
+            my_logger.info("sock5 Display connect error")
             g_Nport4_ip_port_status = -1
             g_sock5_flag = -1
             close_socket(sock5)
@@ -368,12 +380,12 @@ def get_sensor_data_from_DB(tablename):
         with connection.cursor() as cursor:
             # Read a single record
             # sql = "SELECT `id`, `password` FROM `users` WHERE `email`=%s"
-            print("connect to DB")
+            my_logger.info("connect to DB")
             try:
                 cursor.execute("USE sensor")
             except:
                 connection.rollback()
-                print("No sensor DB")
+                my_logger.info("No sensor DB")
             global Source_MAC_address
             global g_Frame_Count
             global g_Sended_Flag
@@ -382,11 +394,11 @@ def get_sensor_data_from_DB(tablename):
             global Correction_Time_need_to_send
             global Retransmission_need_to_send
             if tablename == 'sensordata':
-                print "tablename == sensordata"
+                my_logger.info("tablename == sensordata")
                 try:
                     sql = "select sended_flag, retransmit_flag, raw_data, source_mac_address, frame_count from sensordata WHERE sended_flag='0' or retransmit_flag='1' order by frame_count limit 1"
                     cursor.execute(sql)
-                    #print cursor.rowcount
+                    #my_logger.info(cursor.rowcount)
                     if(cursor.rowcount>0):
                         for row in cursor:
                             Data_need_to_send = row["raw_data"]
@@ -394,52 +406,52 @@ def get_sensor_data_from_DB(tablename):
                             g_Frame_Count = row["frame_count"]
                             g_Sended_Flag = row["sended_flag"]
                             g_Retransmit_Flag = row["retransmit_flag"]
-                            print "Source_MAC_address: " ,Source_MAC_address
-                            print "Data_need_to_send: ",Data_need_to_send
-                            print "g_Frame_Count:", g_Frame_Count
-                            print "g_Sended_Flag:", g_Sended_Flag
-                            print "g_Retransmit_Flag:", g_Retransmit_Flag
+                            my_logger.info("Source_MAC_address: "+str(Source_MAC_address))
+                            my_logger.info("Data_need_to_send: "+str(Data_need_to_send))
+                            my_logger.info("g_Frame_Count:"+str(g_Frame_Count))
+                            my_logger.info("g_Sended_Flag:"+str(g_Sended_Flag))
+                            my_logger.info("g_Retransmit_Flag:"+str(g_Retransmit_Flag))
                     else:
-                        print "DB return null"
+                        my_logger.info("DB return null")
                         Data_need_to_send = None
                 except:
                     connection.rollback()
             elif tablename == 'correctiontime':
-                print "tablename == correctiontime"
+                my_logger.info("tablename == correctiontime")
                 try:
                     sql = "select source_mac_address, sended_flag, raw_data, frame_count from correctiontime WHERE sended_flag='0' order by frame_count limit 1"
                     cursor.execute(sql)
-                    #print cursor.rowcount
+                    #my_logger.info(cursor.rowcount)
                     if(cursor.rowcount>0):
                         for row in cursor:
                             Correction_Time_need_to_send = row["raw_data"]
                             g_Frame_Count = row["frame_count"]
                             Source_MAC_address = row["source_mac_address"]
-                            print "Correction_Time_need_to_send: ",Correction_Time_need_to_send
-                            print "g_Frame_Count:", g_Frame_Count
-                            print "Source_MAC_address: " ,Source_MAC_address
+                            my_logger.info("Correction_Time_need_to_send: "+str(Correction_Time_need_to_send))
+                            my_logger.info("g_Frame_Count:"+str(g_Frame_Count))
+                            my_logger.info("Source_MAC_address: "+str(Source_MAC_address))
                     else:
-                        print "DB return null"
+                        my_logger.info("DB return null")
                         Correction_Time_need_to_send = None
                 except:
-                    print "Correction_Time table except"
+                    my_logger.info("Correction_Time table except")
                     connection.rollback()
             elif tablename == 'retransmission':
-                print "tablename == retransmission"
+                my_logger.info("tablename == retransmission")
                 try:
                     sql = "select source_mac_address, sended_flag, raw_data, frame_count from retransmission WHERE sended_flag='0' order by frame_count limit 1"
                     cursor.execute(sql)
-                    #print cursor.rowcount
+                    #my_logger.info(cursor.rowcount)
                     if(cursor.rowcount>0):
                         for row in cursor:
                             Retransmission_need_to_send = row["raw_data"]
                             Source_MAC_address = row["source_mac_address"]
                             g_Frame_Count = row["frame_count"]
-                            print "Source_MAC_address: " ,Source_MAC_address
-                            print "Retransmission_need_to_send: ",Retransmission_need_to_send
-                            print "g_Frame_Count:", g_Frame_Count
+                            my_logger.info("Source_MAC_address: "+str(Source_MAC_address))
+                            my_logger.info("Retransmission_need_to_send: "+str(Retransmission_need_to_send))
+                            my_logger.info("g_Frame_Count:"+str(g_Frame_Count))
                     else:
-                        print "DB return null"
+                        my_logger.info("DB return null")
                         Retransmission_need_to_send = None
                 except:
                     connection.rollback()
@@ -458,28 +470,28 @@ def update_sensor_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_
 
     try:
         with connection.cursor() as cursor:
-            print("connect to DB")
+            my_logger.info("connect to DB")
             try:
                 cursor.execute("USE sensor")
             except:
-                print("No sensor DB")
+                my_logger.info("No sensor DB")
             if db_type == 1:
-                print("update sensordata table")
+                my_logger.info("update sensordata table")
                 if g_Sended_Flag ==0:
-                    print("update sensordata table g_Sended_Flag ==0")
+                    my_logger.info("update sensordata table g_Sended_Flag ==0")
                     sql = "update sensordata set sended_flag=1, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 elif g_Retransmit_Flag ==1:
-                    print("update sensordata table g_Retransmit_Flag ==1")
+                    my_logger.info("update sensordata table g_Retransmit_Flag ==1")
                     sql = "update sensordata set retransmit_flag=0, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
             elif db_type == 2:
-                print("update correctiontime table")
+                my_logger.info("update correctiontime table")
                 sql = "update correctiontime set sended_flag=1, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
             elif db_type == 3:
-                print("update retransmission table")
+                my_logger.info("update retransmission table")
                 sql = "update retransmission set sended_flag=1, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
@@ -497,23 +509,23 @@ def delete_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_frameCn
 
     try:
         with connection.cursor() as cursor:
-            print("connect to DB")
+            my_logger.info("connect to DB")
             try:
                 cursor.execute("USE sensor")
             except:
-                print("No sensor DB")
+                my_logger.info("No sensor DB")
             if db_type == 1:
-                print("delete sensordata table")
+                my_logger.info("delete sensordata table")
                 sql = "delete from sensordata where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
             elif db_type == 2:
-                print("delete correctiontime table")
+                my_logger.info("delete correctiontime table")
                 sql = "delete from correctiontime where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
             elif db_type == 3:
-                print("delete retransmission table")
+                my_logger.info("delete retransmission table")
                 sql = "delete from  retransmission where source_MAC_Address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
@@ -534,27 +546,27 @@ def select_min_frame_count_from_DB():
 
     try:
         with connection.cursor() as cursor:
-            print("connect to DB")
+            my_logger.info("connect to DB")
             try:
                 cursor.execute("USE sensor")
             except:
-                print("No sensor DB")
-            print("select_min_frame_count_from_DB")
+                my_logger.info("No sensor DB")
+            my_logger.info("select_min_frame_count_from_DB")
             try:
                 sql="select min(frame_count) as minCnt, tbl_name from ((select sended_flag, frame_count, 0 as retransmit_flag, 'retransmission' as tbl_name from retransmission where sended_flag=0 ) union (select sended_flag, frame_count, 0 as retransmit_flag, 'correctiontime' as tbl_name from correctiontime where sended_flag=0) union (select sended_flag, frame_count, retransmit_flag, 'sensordata' as tbl_name from sensordata where sended_flag=0 or retransmit_flag=1)) as summaryTbl group by tbl_name limit 1"
                 cursor.execute(sql)
-                connection.commit()
-                #print cursor.rowcount
+                #connection.commit()
+                #my_logger.info(cursor.rowcount)
                 if(cursor.rowcount>0):
                     for row in cursor:
                         g_minCnt_tbl_name = row["tbl_name"]
                         g_minCnt = row["minCnt"]
-                        print "Select Table Name: " ,g_minCnt_tbl_name
-                        print "Min Counter: ",g_minCnt
+                        my_logger.info("Select Table Name: "+str(g_minCnt_tbl_name))
+                        my_logger.info("Min Counter: "+str(g_minCnt))
                 else:
                     g_minCnt_tbl_name = None
                     g_minCnt = None
-                    print "select_min_frame_count_from_DB, DB return null"
+                    my_logger.info("select_min_frame_count_from_DB, DB return null")
             except:
                 connection.rollback()
     finally:
@@ -570,10 +582,10 @@ def get_lora_module_addr(dev_path):
         ser.write("AT+cdevaddr?\r\n")
         #time.sleep(3)
         check_my_dongle = str(ser.readlines())
-        #print check_my_dongle
+        #my_logger.info(check_my_dongle)
         global MAC_Address, Self_MAC_Level
         MAC_Address = check_my_dongle[check_my_dongle.find(REPLY_STRING) + 10: check_my_dongle.find(REPLY_STRING) + 18]
-        print "MAC_Address:",MAC_Address
+        my_logger.info("MAC_Address:"+str(MAC_Address))
         if(MAC_Address[4:5]=='1'):
             Self_MAC_Level = 1
         elif (MAC_Address[4:5]=='2'):
@@ -584,13 +596,13 @@ def get_lora_module_addr(dev_path):
             Self_MAC_Level = 4
         else:
             Self_MAC_Level = 0
-            print "MAC Level Error reset to 0"
+            my_logger.info("MAC Level Error reset to 0")
         #my_logger.info('My USB dongle checked')
         return ser
         #else:
             #return None
     except serial.serialutil.SerialException:
-        # print 'FAIL: Cannot open Serial Port (No LoRa Node Inserted)'
+        # my_logger.info("FAIL: Cannot open Serial Port (No LoRa Node Inserted)")
         return None
 
 def main():
@@ -611,63 +623,28 @@ def main():
     global g_sock5_flag
     global g_socket_list
 
-    # start:
-    # make queue file folder
-    if not os.path.exists(MY_MQTT_QUEUE_FILE_PATH):
-        os.makedirs(MY_MQTT_QUEUE_FILE_PATH)
-    # make sending file folder
-    if not os.path.exists(MY_SENDING_FILE_PATH):
-        os.makedirs(MY_SENDING_FILE_PATH)
-    # make sent file folder
-    if not os.path.exists(MY_SENT_FILE_PATH):
-        os.makedirs(MY_SENT_FILE_PATH)
-    # make sending fail file folder
-    if not os.path.exists(MY_SEND_FAIL_FILE_PATH):
-        os.makedirs(MY_SEND_FAIL_FILE_PATH)
-    # make log file folder
-    if not os.path.exists(MY_LOG_FILE_PATH):
-        os.makedirs(MY_LOG_FILE_PATH)
-
-    # Set up a specific logger with our desired output level
-    my_logger = logging.getLogger('dequeue')
-    # Add the log message handler to the logger
-    my_logger.setLevel(logging.DEBUG)
-    handler = RotatingFileHandler(MY_LOG_FILENAME, maxBytes=10240, backupCount=100)
-    # create a logging format
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    my_logger.addHandler(handler)
-    my_logger.info('I am started!')
-
     build_app_group_table()
 
-    print('deq.py is started!')
-    print('dic - appskey and nwkskey')
-    print(my_dict_appskey)
-    print(my_dict_nwkskey)
-
-    # example
-    # my_logger.debug('debug message')
-    # my_logger.info('info message')
-    # my_logger.warn('warn message')
-    # my_logger.error('error message')
-    # my_logger.critical('critical message')
+    my_logger.info("deq.py is started!")
+    my_logger.info("dic - appskey and nwkskey")
+    my_logger.info(my_dict_appskey)
+    my_logger.info(my_dict_nwkskey)
 
     global_check_dongle_exist = False
     for devPath in USB_DEV_ARRAY:
-        #print devPath
+        #my_logger.info(devPath)
         ser = get_lora_module_addr(devPath)
         if ser is None:
             continue
         else:
             global_check_dongle_exist = True
-            #print('Open LoRa node done:')
+            #my_logger.info("Open LoRa node done:")
 
-            #print(devPath)
+            #my_logger.info(devPath)
             break
 
     if global_check_dongle_exist is False:
-        print('no device be detected, exit!!!')
+        my_logger.info("no device be detected, exit!!!")
         sys.exit()
 
     my_dict = {}
@@ -681,7 +658,7 @@ def main():
                 ser.flushOutput()
                 ser.write("at+dtx=11,\"1234567890a\"\r\n")
                 #return_state = ser.readlines()
-                #print(return_state)
+                #my_logger.info(return_state)
         if g_sock2_flag == -1:
             TCP_connect(Application_Server_ip_port)
         if g_sock3_flag == -1:
@@ -695,67 +672,67 @@ def main():
             #Await a read event
             rlist, wlist, elist = select.select( g_socket_list, [], [], SELECT_TIMEOUT)
         except select.error:
-            print "select error"
+            my_logger.info("select error")
 
         for sock in rlist:
             if sock1 == sock: #Diagnosis_PC
                 try:
                     recvdata = sock.recv(1024)
                     if not recvdata:
-                        print "sock1 Diagnosis_PC disconnect"
+                        my_logger.info("sock1 Diagnosis_PC disconnect")
                         g_sock1_flag = -1
                         close_socket(sock1)
                 except socket.error:
-                    print "sock1 Diagnosis_PC socket error"
+                    my_logger.info("sock1 Diagnosis_PC socket error")
                     g_sock1_flag = -1
                     close_socket(sock1)
             elif sock2 == sock: #Application Server
                 try:
                     recvdata = sock.recv(1024)
                     if not recvdata:
-                        print "sock2 Application Server disconnect"
+                        my_logger.info("sock2 Application Server disconnect")
                         g_sock2_flag = -1
                         close_socket(sock2)
                 except socket.error:
-                    print "sock2 Application Server socket error"
+                    my_logger.info("sock2 Application Server socket error")
                     g_sock2_flag = -1
                     close_socket(sock2)
             elif sock3 == sock: #Microwave PC
                 try:
                     recvdata = sock.recv(1024)
                     if not recvdata:
-                        print "sock3 Microwave PC disconnect"
+                        my_logger.info("sock3 Microwave PC disconnect")
                         g_sock3_flag = -1
                         close_socket(sock3)
                 except socket.error:
-                    print "sock3 Microwave PC socket error"
+                    my_logger.info("sock3 Microwave PC socket error")
                     g_sock3_flag = -1
                     close_socket(sock3)
             elif sock4 == sock: #Radio
                 try:
                     recvdata = sock.recv(1024)
                     if not recvdata:
-                        print "sock4 Radio disconnect"
+                        my_logger.info("sock4 Radio disconnect")
                         g_sock4_flag = -1
                         close_socket(sock4)
                 except socket.error:
-                    print "sock4 Radio socket error"
+                    my_logger.info("sock4 Radio socket error")
                     g_sock4_flag = -1
                     close_socket(sock4)
             elif sock5 == sock: #Display
                 try:
                     recvdata = sock.recv(1024)
                     if not recvdata:
-                        print "sock5 Display disconnect"
+                        my_logger.info("sock5 Display disconnect")
                         g_sock5_flag = -1
                         close_socket(sock5)
                 except socket.error:
-                    print "sock5 Display socket error"
+                    my_logger.info("sock5 Display socket error")
                     g_sock5_flag = -1
                     close_socket(sock5)
 
         select_min_frame_count_from_DB()
-        print "g_minCnt_tbl_name:",g_minCnt_tbl_name
+        my_logger.info("g_minCnt_tbl_name:"+str(g_minCnt_tbl_name))
         if g_minCnt_tbl_name != None:
             if g_minCnt_tbl_name == 'sensordata':
                 tablename = 'sensordata'
@@ -767,11 +744,11 @@ def main():
                 tablename = 'retransmission'
                 get_sensor_data_from_DB(tablename)
         else:
-            print "No data need to be send"
+            my_logger.info("No data need to be send")
 
         return_state = ""
         if Data_need_to_send != None:
-            print "Sensor data send"
+            my_logger.info("Sensor data send")
             #sensor_data = Data_need_to_send
             CMD = int(Data_need_to_send[0:2],16)
             tmp_data = Data_need_to_send[2:]
@@ -779,15 +756,15 @@ def main():
             if Self_MAC_Level != recv_MAC_Level:
                 CMD = (Self_MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
             if g_Retransmit_Flag ==1:
-                print "g_Retransmit_Flag ==1 change command"
+                my_logger.info("g_Retransmit_Flag ==1 change command")
                 CMD = (CMD & ~(1<<2)) | (CMD | 1<<3) | (CMD & ~(1<<4))
-                print "Retransmit CMD:",CMD
+                my_logger.info("Retransmit CMD:"+str(CMD))
             cmd_hex_data = binascii.hexlify(struct.pack(Endian + 'B', CMD))
             sensor_data = str(cmd_hex_data)+tmp_data
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
-            print"sensor_frameCnt:",sensor_frameCnt
+            my_logger.info("sensor_frameCnt:"+str(sensor_frameCnt))
             if (sensor_data_len %2) !=0 or sensor_data_len <18:
                 length_flag=0
             else:
@@ -795,101 +772,101 @@ def main():
             if sensor_macAddr[0:2] in my_dict_appskey and length_flag==1:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
-                print("sensor_data:" + sensor_data )
+                my_logger.info("sensor_data:"+str(sensor_data))
                 data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + str(sensor_frameCnt) + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
                 data_sending = str(data_sending)
-                print data_sending
+                my_logger.info(data_sending)
                 ser.flushInput()
                 ser.flushOutput()
                 ser.write(data_sending)
                 time.sleep(MY_SLEEP_INTERVAL)
                 return_state = ser.readlines()
-                #print(return_state)
+                #my_logger.info(return_state)
             else:
                 if length_flag ==0:
-                    print('Data length error, should not be odd or sensordata length less then 18!')
+                    my_logger.info("Data length error, should not be odd or sensordata length less then 18!")
                     delete_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
                 else:
-                    print('Not in ABP Group Config Rule, so give up')
+                    my_logger.info("Not in ABP Group Config Rule, so give up")
                     delete_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
                     length_flag=0 #set flag=0 not show display
 
             if SENT_OK_TAG in return_state:
-                print("Result: SENT.")
+                my_logger.info("Result: SENT.")
                 #sended than update DB change sended flag to 1 by nick
                 update_sensor_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
                 Data_need_to_send = None
                 sent_flag=1
             else:
-                print("Result: Send FAIL!")
+                my_logger.info("Result: Send FAIL!")
                 sent_flag=0
             #Send sensor data to application server or Microwave PC or Radio
             if sent_flag==1:
                 try:
-                    print("Send sensor data to Application Server")
+                    my_logger.info("Send sensor data to Application Server")
                     sock2.send(sensor_macAddr+sensor_data)
                 except socket.error:
-                    print"sock2 Application Server socket error"
+                    my_logger.info("sock2 Application Server socket error")
                     TCP_connect(Application_Server_ip_port)
                 try:
-                    print("Send sensor data to Microwave PC")
+                    my_logger.info("Send sensor data to Microwave PC")
                     sock3.send(sensor_macAddr+sensor_data)
                 except socket.error:
-                    print"sock3 Microwave PC socket error"
+                    my_logger.info("sock3 Microwave PC socket error")
                     TCP_connect(Microwave_PC_ip_port)
                 try:
-                    print("Send sensor data to Radio")
+                    my_logger.info("Send sensor data to Radio")
                     sock4.send(sensor_macAddr+sensor_data)
                 except socket.error:
-                    print"sock4 Radio socket error"
+                    my_logger.info("sock4 Radio socket error")
                     TCP_connect(Nport3_ip_port)
             if Self_MAC_Level == recv_MAC_Level and length_flag==1:
                 try:
-                    print("Send sensor data to Display")
+                    my_logger.info("Send sensor data to Display")
                     combinestr = str(int(sensor_data[10:14],16))+str(int(sensor_data[14:16],16)).zfill(2)
-                    print "combinestr:",combinestr
+                    my_logger.info("combinestr:"+str(combinestr))
                     if int(combinestr) > 65535:
                         convertdata = str('{0:X}'.format(int(combinestr))).zfill(6)
-                        print "convertdata:",convertdata
+                        my_logger.info("convertdata:"+str(convertdata))
                         crc_data = unhexlify('00060027'+str(convertdata[2:6]))
                     else:
                         convertdata = str('{0:X}'.format(int(combinestr))).zfill(4)
-                        print "convertdata:",convertdata
+                        my_logger.info("convertdata:"+str(convertdata))
                         crc_data = unhexlify('00060027'+str(convertdata))
                     crc_func = crcmod.predefined.mkCrcFun('modbus')
                     modbus_crc = str('{0:X}'.format(crc_func(crc_data))).zfill(4)
-                    print "Modbus CRC:",modbus_crc
+                    my_logger.info("Modbus CRC:"+str(modbus_crc))
                     low_crc = str(modbus_crc)[2:4]
                     high_crc = str(modbus_crc)[0:2]
                     if len(convertdata) >4:
-                        print "Display Data > 65535"
+                        my_logger.info("Display Data > 65535")
                         socksend_high_data = unhexlify('000600260001A810')
                         sock5.send(socksend_high_data)
                         time.sleep(1)
                         socksend_low_data = unhexlify('00060027'+convertdata[2:6]+low_crc+high_crc)
                         sock5.send(socksend_low_data)
                     else:
-                        print "Display Data <= 65535"
+                        my_logger.info("Display Data <= 65535")
                         socksend_high_data = unhexlify('00060026000069D0')
                         sock5.send(socksend_high_data)
                         time.sleep(1)
                         socksend_low_data = unhexlify('00060027'+convertdata+low_crc+high_crc)
                         sock5.send(socksend_low_data)
                 except socket.error:
-                    print"sock5 Display socket error"
+                    my_logger.info("sock5 Display socket error")
                     TCP_connect(Nport4_ip_port)
         else:
-            print("Waiting for incoming queue")
+            my_logger.info("Waiting for incoming queue")
 
         return_state = ""
         if Correction_Time_need_to_send != None:
-            print"Correction time send"
+            my_logger.info("Correction time send")
             #convert Correction_Time_need_to_send to hex time
             #sensor_data = Correction_Time_need_to_send
             CMD = int(Correction_Time_need_to_send[0:2],16)
             tmp_data = Correction_Time_need_to_send[2:]
             recv_MAC_Level = CMD>>5
-            print "recv_MAC_Level:",recv_MAC_Level
+            my_logger.info("recv_MAC_Level:"+str(recv_MAC_Level))
             if Self_MAC_Level != recv_MAC_Level:
                 CMD = (Self_MAC_Level<<5) | (CMD & ~(1<<5 | 1<<6 | 1<<7))
             cmd_hex_data = binascii.hexlify(struct.pack(Endian + 'B', CMD))
@@ -897,7 +874,7 @@ def main():
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
-            print"sensor_frameCnt:",sensor_frameCnt
+            my_logger.info("sensor_frameCnt:"+str(sensor_frameCnt))
             if (sensor_data_len %2) !=0:
                 length_flag=0
             else:
@@ -905,60 +882,60 @@ def main():
             if sensor_macAddr[0:2] in my_dict_appskey:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
-                print("sensor_data:" + sensor_data )
+                my_logger.info("sensor_data:"+str(sensor_data))
                 data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + str(sensor_frameCnt) + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
                 data_sending = str(data_sending)
-                print data_sending
+                my_logger.info(data_sending)
                 #update DB sended flag here when sended and return status = "tx done        " bu nick
                 ser.flushInput()
                 ser.flushOutput()
                 ser.write(data_sending)
                 time.sleep(MY_SLEEP_INTERVAL)
                 return_state = ser.readlines()
-                #print(return_state)
+                #my_logger.info(return_state)
             else:
                 if length_flag ==0:
-                    print('Data length error, should not be odd!')
+                    my_logger.info("Data length error, should not be odd!")
                     delete_data_to_DB(1, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
                 else:
-                    print('Not in ABP Group Config Rule, so give up')
+                    my_logger.info("Not in ABP Group Config Rule, so give up")
                     delete_data_to_DB(2, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
 
             if SENT_OK_TAG in return_state:
-                print("Result: SENT.")
+                my_logger.info("Result: SENT.")
                 #sended than update DB change sended flag to 1 by nick
                 update_sensor_data_to_DB(2, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
                 Correction_Time_need_to_send = None
                 sent_flag=1
             else:
-                print("Result: Send FAIL!")
+                my_logger.info("Result: Send FAIL!")
                 sent_flag=0
 
             if 'ffffff' not in sensor_macAddr and 'FFFFFF' not in sensor_macAddr and sent_flag==1:
                 #Send correctiontime ACK to application server or Microwave PC or Radio
                 try:
-                    print("Send correctiontime ACK to Application Server")
+                    my_logger.info("Send correctiontime ACK to Application Server")
                     sock2.send(sensor_macAddr+sensor_data)
                 except socket.error:
-                    print"sock2 Application Server socket error"
+                    my_logger.info("sock2 Application Server socket error")
                     TCP_connect(Application_Server_ip_port)
                 try:
-                    print("Send correctiontime ACK to Microwave PC")
+                    my_logger.info("Send correctiontime ACK to Microwave PC")
                     sock3.send(sensor_macAddr+sensor_data)
                 except socket.error:
-                    print"sock3 Microwave PC socket error"
+                    my_logger.info("sock3 Microwave PC socket error")
                     TCP_connect(Microwave_PC_ip_port)
                 try:
-                    print("Send correctiontime ACK to Radio")
+                    my_logger.info("Send correctiontime ACK to Radio")
                     sock4.send(sensor_macAddr+sensor_data)
                 except socket.error:
-                    print"sock4 Radio socket error"
+                    my_logger.info("sock4 Radio socket error")
                     TCP_connect(Nport3_ip_port)
         #time.sleep(MY_SLEEP_INTERVAL)
 
         return_state = ""
         if Retransmission_need_to_send != None:
-            print"Retransmit send"
+            my_logger.info("Retransmit send")
             sensor_data = Retransmission_need_to_send
             CMD = int(Retransmission_need_to_send[0:2],16)
             tmp_data = Retransmission_need_to_send[2:]
@@ -970,7 +947,7 @@ def main():
             sensor_macAddr = Source_MAC_address
             sensor_data_len = len(sensor_data)
             sensor_frameCnt = g_Frame_Count
-            print"sensor_frameCnt:",sensor_frameCnt
+            my_logger.info("sensor_frameCnt:"+str(sensor_frameCnt))
             if (sensor_data_len %2) !=0:
                 length_flag=0
             else:
@@ -978,32 +955,32 @@ def main():
             if sensor_macAddr[0:2] in my_dict_appskey:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
-                print("sensor_data:" + sensor_data )
+                my_logger.info("sensor_data:"+str(sensor_data))
                 data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + str(sensor_frameCnt) + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
                 data_sending = str(data_sending)
-                print data_sending
+                my_logger.info(data_sending)
                 ser.flushInput()
                 ser.flushOutput()
                 ser.write(data_sending)
                 time.sleep(MY_SLEEP_INTERVAL)
                 return_state = ser.readlines()
-                #print(return_state)
+                #my_logger.info(return_state)
             else:
                 if length_flag ==0:
-                    print('Data length error, should not be odd!')
+                    my_logger.info("Data length error, should not be odd!")
                     delete_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
                 else:
-                    print('Not in ABP Group Config Rule, so give up')
+                    my_logger.info("Not in ABP Group Config Rule, so give up")
                     delete_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
 
             if SENT_OK_TAG in return_state:
-                print("Result: SENT.")
+                my_logger.info("Result: SENT.")
                 #sended than update DB change sended flag to 1 by nick
                 update_sensor_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
                 Retransmission_need_to_send = None
                 sent_flag=1
             else:
-                print("Result: Send FAIL!")
+                my_logger.info("Result: Send FAIL!")
                 sent_flag=0
 
         #To send LoRa repeater I/O status to  Diagnosis PC
