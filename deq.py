@@ -580,7 +580,6 @@ def get_lora_module_addr(dev_path):
         ser.flushOutput()
         #ser.write("AT+cdevaddr=05002001\r\n")
         ser.write("AT+cdevaddr?\r\n")
-        #time.sleep(3)
         check_my_dongle = str(ser.readlines())
         #my_logger.info(check_my_dongle)
         global MAC_Address, Self_MAC_Level
@@ -651,6 +650,7 @@ def main():
     time_dict= {}
 
     while True:
+        tmp = ""
         if g_sock1_flag == -1:
             TCP_connect(Diagnosis_PC_ip_port)
             if g_sock1_flag == 0:
@@ -659,14 +659,48 @@ def main():
                 ser.write("at+dtx=11,\"1234567890a\"\r\n")
                 #return_state = ser.readlines()
                 #my_logger.info(return_state)
+        else:
+            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.99:4005|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            for count1 in range(len(cmd_res)):
+                if int(cmd_res[count1]) > 0:
+                    g_sock1_flag = -1
+                    close_socket(sock1)
+
         if g_sock2_flag == -1:
             TCP_connect(Application_Server_ip_port)
+        else:
+            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.101:4006|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            for count1 in range(len(cmd_res)):
+                if int(cmd_res[count1]) > 0:
+                    g_sock2_flag = -1
+                    close_socket(sock2)
+
         if g_sock3_flag == -1:
             TCP_connect(Microwave_PC_ip_port)
+        else:
+            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.102:4007|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            for count1 in range(len(cmd_res)):
+                if int(cmd_res[count1]) > 0:
+                    g_sock3_flag = -1
+                    close_socket(sock3)
+
         if g_sock4_flag == -1:
             TCP_connect(Nport3_ip_port)
+        else:
+            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4003|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            for count1 in range(len(cmd_res)):
+                if int(cmd_res[count1]) > 0:
+                    g_sock4_flag = -1
+                    close_socket(sock4)
+
         if g_sock5_flag == -1:
             TCP_connect(Nport4_ip_port)
+        else:
+            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4004|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            for count1 in range(len(cmd_res)):
+                if int(cmd_res[count1]) > 0:
+                    g_sock5_flag = -1
+                    close_socket(sock5)
 
         try:
             #Await a read event
@@ -727,7 +761,7 @@ def main():
                         g_sock5_flag = -1
                         close_socket(sock5)
                 except socket.error:
-                    my_logger.info("sock5 Display socket error")
+                    my_logger.info("sock5 Display socket error 1")
                     g_sock5_flag = -1
                     close_socket(sock5)
 
@@ -807,19 +841,22 @@ def main():
                     sock2.send(sensor_macAddr+sensor_data)
                 except socket.error:
                     my_logger.info("sock2 Application Server socket error")
-                    TCP_connect(Application_Server_ip_port)
+                    g_sock2_flag = -1
+                    close_socket(sock2)
                 try:
                     my_logger.info("Send sensor data to Microwave PC")
                     sock3.send(sensor_macAddr+sensor_data)
                 except socket.error:
                     my_logger.info("sock3 Microwave PC socket error")
-                    TCP_connect(Microwave_PC_ip_port)
+                    g_sock3_flag = -1
+                    close_socket(sock3)
                 try:
+                    sended_len = sock4.send(sensor_macAddr+sensor_data)
                     my_logger.info("Send sensor data to Radio")
-                    sock4.send(sensor_macAddr+sensor_data)
                 except socket.error:
                     my_logger.info("sock4 Radio socket error")
-                    TCP_connect(Nport3_ip_port)
+                    g_sock4_flag = -1
+                    close_socket(sock4)
             if Self_MAC_Level == recv_MAC_Level and length_flag==1:
                 try:
                     my_logger.info("Send sensor data to Display")
@@ -853,8 +890,9 @@ def main():
                         socksend_low_data = unhexlify('00060027'+convertdata+low_crc+high_crc)
                         sock5.send(socksend_low_data)
                 except socket.error:
-                    my_logger.info("sock5 Display socket error")
-                    TCP_connect(Nport4_ip_port)
+                    my_logger.info("sock5 Display socket error 2")
+                    g_sock5_flag = -1
+                    close_socket(sock5)
         else:
             my_logger.info("Waiting for incoming queue")
 
@@ -918,20 +956,22 @@ def main():
                     sock2.send(sensor_macAddr+sensor_data)
                 except socket.error:
                     my_logger.info("sock2 Application Server socket error")
-                    TCP_connect(Application_Server_ip_port)
+                    g_sock2_flag = -1
+                    close_socket(sock2)
                 try:
                     my_logger.info("Send correctiontime ACK to Microwave PC")
                     sock3.send(sensor_macAddr+sensor_data)
                 except socket.error:
                     my_logger.info("sock3 Microwave PC socket error")
-                    TCP_connect(Microwave_PC_ip_port)
+                    g_sock3_flag = -1
+                    close_socket(sock3)
                 try:
                     my_logger.info("Send correctiontime ACK to Radio")
                     sock4.send(sensor_macAddr+sensor_data)
                 except socket.error:
                     my_logger.info("sock4 Radio socket error")
-                    TCP_connect(Nport3_ip_port)
-        #time.sleep(MY_SLEEP_INTERVAL)
+                    g_sock4_flag = -1
+                    close_socket(sock4)
 
         return_state = ""
         if Retransmission_need_to_send != None:

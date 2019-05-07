@@ -84,7 +84,6 @@ def get_lora_module_addr(dev_path):
         ser.flushInput()
         ser.flushOutput()
         ser.write("AT+cdevaddr?\r\n")
-        #time.sleep(3)
         check_my_dongle = str(ser.readlines())
         # my_logger.info("check_my_dongle")
         global MAC_Address, Self_MAC_Level
@@ -427,6 +426,7 @@ def TCP_connect(name):
     global g_sock1_flag
     global g_sock2_flag
     global g_sock3_flag
+    global g_socket_list
 
     if name == Nport1_ip_port:
         try:
@@ -525,14 +525,33 @@ def main():
     while True:
         if g_sock1_flag == -1:
             TCP_connect(Nport1_ip_port)
+        else:
+            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4001|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            for count1 in range(len(cmd_res)):
+                if int(cmd_res[count1]) > 0:
+                    g_sock1_flag = -1
+                    close_socket(sock1)
+
         if g_sock2_flag == -1:
             TCP_connect(Nport2_ip_port)
+        else:
+            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4002|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            for count1 in range(len(cmd_res)):
+                if int(cmd_res[count1]) > 0:
+                    g_sock2_flag = -1
+                    close_socket(sock2)
+
         if g_sock3_flag == -1:
             TCP_connect(Application_Server_ip_port)
+        else:
+            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.101:4006|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            for count1 in range(len(cmd_res)):
+                if int(cmd_res[count1]) > 0:
+                    g_sock3_flag = -1
+                    close_socket(sock3)
 
         try:
             #Await a read event
-            #rlist, wlist, elist = select.select( [sock1, sock2, sock3], [], [], 5)
             rlist, wlist, elist = select.select( g_socket_list, [], [], SELECT_TIMEOUT)
         except select.error:
             my_logger.info("select error")
@@ -601,7 +620,6 @@ def main():
                     my_logger.info("sock1 Water Meter socket error")
                     g_sock1_flag = -1
                     close_socket(sock1)
-                    time.sleep(5)
             elif sock2 == sock: #rain
                 try:
                     recvdata = sock.recv(1024)
@@ -668,7 +686,6 @@ def main():
                     my_logger.info("sock2 Rain Meter socket error")
                     g_sock2_flag = -1
                     close_socket(sock2)
-                    time.sleep(5)
             elif sock3 == sock: #Application server
                 try:
                     recvdata = sock.recv(1024)
@@ -718,7 +735,6 @@ def main():
                     my_logger.info("sock3 Application Server socket error")
                     g_sock3_flag = -1
                     close_socket(sock3)
-                    time.sleep(5)
             else:
                 my_logger.info("Socket Else")
 
