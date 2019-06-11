@@ -50,6 +50,9 @@ SELECT_TIMEOUT = 1
 #mutex lock for accessing DB
 g_db_mutex = threading.Lock()
 
+#socket UNKNOW status
+SOCK_UNKNOW = "unkn"
+
 # Set up a specific logger with our desired output level
 my_logger = logging.getLogger('enqueue')
 # Add the log message handler to the logger
@@ -527,28 +530,58 @@ def main():
             TCP_connect(Nport1_ip_port)
         else:
             cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4001|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock1_flag = -1
                     close_socket(sock1)
+            if g_sock1_flag == 0:
+                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4001|awk \'{print $8}\'').readlines()
+                count1 = 0
+                for count1 in range(len(cmd_res)):
+                    res_return = cmd_res[count1].find(SOCK_UNKNOW)
+                    if int(res_return) != -1:
+                        my_logger.info(res_return)
+                        g_sock1_flag = -1
+                        close_socket(sock1)
 
         if g_sock2_flag == -1:
             TCP_connect(Nport2_ip_port)
         else:
             cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4002|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock2_flag = -1
                     close_socket(sock2)
+            if g_sock2_flag == 0:
+                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4002|awk \'{print $8}\'').readlines()
+                count1 = 0
+                for count1 in range(len(cmd_res)):
+                    res_return = cmd_res[count1].find(SOCK_UNKNOW)
+                    if int(res_return) != -1:
+                        my_logger.info(res_return)
+                        g_sock2_flag = -1
+                        close_socket(sock2)
 
         if g_sock3_flag == -1:
             TCP_connect(Application_Server_ip_port)
         else:
             cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.101:4006|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock3_flag = -1
                     close_socket(sock3)
+            if g_sock3_flag == 0:
+                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4006|awk \'{print $8}\'').readlines()
+                count1 = 0
+                for count1 in range(len(cmd_res)):
+                    res_return = cmd_res[count1].find(SOCK_UNKNOW)
+                    if int(res_return) != -1:
+                        my_logger.info(res_return)
+                        g_sock3_flag = -1
+                        close_socket(sock3)
 
         try:
             #Await a read event
