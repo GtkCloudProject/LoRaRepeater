@@ -1,5 +1,16 @@
 #!/usr/bin/python
 
+"""
+@file deq.py
+@brief a. forward sensor's data withch store in database and send that by LoRa module.
+       b. forward sensor's data, correction time ack and retransmission ack data to application server by ethernet socket.
+       c. forward correction time command
+       d. forward retransmission command
+@author Nick Lee / Chris Chang
+@date 2019/06
+"""
+
+#System Imports
 import os
 import json
 import sys
@@ -108,7 +119,9 @@ my_logger.info("deq.py started!!!")
 # my_logger.error('error message')
 # my_logger.critical('critical message')
 
-#To close socket
+"""
+To close socket
+"""
 def close_socket(sock_c):
     global g_socket_list
 
@@ -118,7 +131,9 @@ def close_socket(sock_c):
     except ValueError:
         pass
 
-#To show device I/O status
+"""
+To show device I/O status
+"""
 def report_status_to_diagnosis_pc():
     global sock1
     global sock2
@@ -241,7 +256,9 @@ def report_status_to_diagnosis_pc():
         g_sock1_flag = -1
         close_socket(sock1)
 
-#add by nick
+"""
+Check socket status, sock1: Diagnosis PC, sock2: Application Server, sock3: Microwave PC sock4: Radio(Not used) sock5: Display
+"""
 def TCP_connect(name):
     global sock1
     global sock2
@@ -259,6 +276,7 @@ def TCP_connect(name):
     global g_sock5_flag
     global g_socket_list
 
+    # Diagnosis PC
     if name == Diagnosis_PC_ip_port:
         try:
             sock1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -275,6 +293,7 @@ def TCP_connect(name):
             g_sock1_flag = -1
             close_socket(sock1)
             pass
+    # Application Server
     elif name == Application_Server_ip_port:
         try:
             sock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -293,6 +312,7 @@ def TCP_connect(name):
             g_sock2_flag = -1
             close_socket(sock2)
             pass
+    # Microwave PC
     elif name == Microwave_PC_ip_port:
         try:
             sock3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -311,6 +331,7 @@ def TCP_connect(name):
             g_sock3_flag = -1
             close_socket(sock3)
             pass
+    # Radio(Not used)
     elif name == Nport3_ip_port:
         try:
             sock4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -329,6 +350,7 @@ def TCP_connect(name):
             g_sock4_flag = -1
             close_socket(sock4)
             pass
+    # Display
     elif name == Nport4_ip_port:
         try:
             sock5 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -348,6 +370,9 @@ def TCP_connect(name):
             close_socket(sock5)
             pass
 
+"""
+Use for mapping Lora mac key by group, we using '05' as group id in this project
+"""
 def build_app_group_table():
     # Connect to the database
     connection = pymysql.connect(host='localhost',
@@ -369,7 +394,9 @@ def build_app_group_table():
     finally:
         connection.close()
 
-#add by nick
+"""
+Select which data should be send form three database tables, sensordata, correctiontime and retransmission. If return null, will check again at next time in main whild loop
+"""
 def get_sensor_data_from_DB(tablename):
     # Connect to the database
     connection = pymysql.connect(host='localhost',
@@ -399,6 +426,7 @@ def get_sensor_data_from_DB(tablename):
             if tablename == 'sensordata':
                 my_logger.info("tablename == sensordata")
                 try:
+                    # select from sensordata table, get sensor data to be sent
                     sql = "select sended_flag, retransmit_flag, raw_data, source_mac_address, frame_count from sensordata WHERE sended_flag='0' or retransmit_flag='1' order by frame_count limit 1"
                     cursor.execute(sql)
                     #my_logger.info(cursor.rowcount)
@@ -422,6 +450,7 @@ def get_sensor_data_from_DB(tablename):
             elif tablename == 'correctiontime':
                 my_logger.info("tablename == correctiontime")
                 try:
+                    # select from correctiontime table, get correctiontime data to be sent
                     sql = "select source_mac_address, sended_flag, raw_data, frame_count from correctiontime WHERE sended_flag='0' order by frame_count limit 1"
                     cursor.execute(sql)
                     #my_logger.info(cursor.rowcount)
@@ -442,6 +471,7 @@ def get_sensor_data_from_DB(tablename):
             elif tablename == 'retransmission':
                 my_logger.info("tablename == retransmission")
                 try:
+                    # select from retransmission table, get retransmission data to be sent
                     sql = "select source_mac_address, sended_flag, raw_data, frame_count from retransmission WHERE sended_flag='0' order by frame_count limit 1"
                     cursor.execute(sql)
                     #my_logger.info(cursor.rowcount)
@@ -461,7 +491,9 @@ def get_sensor_data_from_DB(tablename):
     finally:
         connection.close()
 
-#add by nick
+"""
+Update which data should be change it's flag status, change g_Sended_Flag to 1 if the data has been sent, or change retransmit_flag to 0 if the retransmit data has been sent.
+"""
 def update_sensor_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_frameCnt):
     # Connect to the database
     connection = pymysql.connect(host='localhost',
@@ -478,6 +510,7 @@ def update_sensor_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_
                 cursor.execute("USE sensor")
             except:
                 my_logger.info("No sensor DB")
+            # update sensordata table
             if db_type == 1:
                 my_logger.info("update sensordata table")
                 if g_Sended_Flag ==0:
@@ -488,11 +521,13 @@ def update_sensor_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_
                     sql = "update sensordata set retransmit_flag=0, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
+            # update correctiontime table
             elif db_type == 2:
                 my_logger.info("update correctiontime table")
                 sql = "update correctiontime set sended_flag=1, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
+            # update retransmission table
             elif db_type == 3:
                 my_logger.info("update retransmission table")
                 sql = "update retransmission set sended_flag=1, last_sent_time=now() where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
@@ -500,7 +535,10 @@ def update_sensor_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_
                 connection.commit()
     finally:
         connection.close()
-#add by nick
+
+"""
+Delete data from database, delete the wrong data, for example: wrong data length or mac address not in ABP Group.
+"""
 def delete_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_frameCnt):
     # Connect to the database
     connection = pymysql.connect(host='localhost',
@@ -517,16 +555,19 @@ def delete_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_frameCn
                 cursor.execute("USE sensor")
             except:
                 my_logger.info("No sensor DB")
+            # delete sensordata table
             if db_type == 1:
                 my_logger.info("delete sensordata table")
                 sql = "delete from sensordata where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
+            # delete correctiontime table
             elif db_type == 2:
                 my_logger.info("delete correctiontime table")
                 sql = "delete from correctiontime where source_mac_address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
                 cursor.execute(sql)
                 connection.commit()
+            # delete retransmission table
             elif db_type == 3:
                 my_logger.info("delete retransmission table")
                 sql = "delete from  retransmission where source_MAC_Address='%s' AND raw_data='%s' AND frame_count='%s'" % (l_sensor_macAddr[0:8], l_sensor_data, l_sensor_frameCnt)
@@ -535,7 +576,9 @@ def delete_data_to_DB(db_type, l_sensor_macAddr, l_sensor_data, l_sensor_frameCn
     finally:
         connection.close()
 
-#add by nick
+"""
+Select the minimum frame counter from all three database, the minimum frame counter data should be sent first.
+"""
 def select_min_frame_count_from_DB():
     global g_minCnt
     global g_minCnt_tbl_name
@@ -555,6 +598,7 @@ def select_min_frame_count_from_DB():
             except:
                 my_logger.info("No sensor DB")
             my_logger.info("select_min_frame_count_from_DB")
+            # select minimum frame counter from all three tables
             try:
                 sql="select min(frame_count) as minCnt, tbl_name from ((select sended_flag, frame_count, 0 as retransmit_flag, 'retransmission' as tbl_name from retransmission where sended_flag=0 ) union (select sended_flag, frame_count, 0 as retransmit_flag, 'correctiontime' as tbl_name from correctiontime where sended_flag=0) union (select sended_flag, frame_count, retransmit_flag, 'sensordata' as tbl_name from sensordata where sended_flag=0 or retransmit_flag=1)) as summaryTbl group by tbl_name limit 1"
                 cursor.execute(sql)
@@ -575,7 +619,9 @@ def select_min_frame_count_from_DB():
     finally:
         connection.close()
 
-#get MAC Address for serial
+"""
+Get MAC Address for serial interface by at command
+"""
 def get_lora_module_addr(dev_path):
     try:
         ser = serial.Serial(dev_path, 9600, timeout=0.5)
@@ -607,6 +653,10 @@ def get_lora_module_addr(dev_path):
         # my_logger.info("FAIL: Cannot open Serial Port (No LoRa Node Inserted)")
         return None
 
+"""
+Main function will check the sock status in while loop. sock1: Diagnosis PC, sock2: Application Server, sock3: Microwave PC sock4: Radio(Not used) sock5: Display
+And select the minimum frame counter from all three database then sent by lora at command.
+"""
 def main():
     global Data_need_to_send
     global Retransmission_need_to_send
@@ -654,6 +704,7 @@ def main():
 
     while True:
         tmp = ""
+        # check connect status
         if g_sock1_flag == -1:
             TCP_connect(Diagnosis_PC_ip_port)
             if g_sock1_flag == 0:
@@ -679,6 +730,7 @@ def main():
                         g_sock1_flag = -1
                         close_socket(sock1)
 
+        # check connect status
         if g_sock2_flag == -1:
             TCP_connect(Application_Server_ip_port)
         else:
@@ -698,6 +750,7 @@ def main():
                         g_sock2_flag = -1
                         close_socket(sock2)
 
+        # check connect status
         if g_sock3_flag == -1:
             TCP_connect(Microwave_PC_ip_port)
         else:
@@ -717,6 +770,7 @@ def main():
                         g_sock3_flag = -1
                         close_socket(sock3)
 
+        # check connect status
         if g_sock4_flag == -1:
             TCP_connect(Nport3_ip_port)
         else:
@@ -736,6 +790,7 @@ def main():
                         g_sock4_flag = -1
                         close_socket(sock4)
 
+        # check connect status
         if g_sock5_flag == -1:
             TCP_connect(Nport4_ip_port)
         else:
@@ -762,7 +817,7 @@ def main():
             my_logger.info("select error")
 
         for sock in rlist:
-            if sock1 == sock: #Diagnosis_PC
+            if sock1 == sock: # Diagnosis_PC
                 try:
                     recvdata = sock.recv(1024)
                     if not recvdata:
@@ -773,7 +828,7 @@ def main():
                     my_logger.info("sock1 Diagnosis_PC socket error")
                     g_sock1_flag = -1
                     close_socket(sock1)
-            elif sock2 == sock: #Application Server
+            elif sock2 == sock: # Application Server
                 try:
                     recvdata = sock.recv(1024)
                     if not recvdata:
@@ -795,7 +850,7 @@ def main():
                     my_logger.info("sock3 Microwave PC socket error")
                     g_sock3_flag = -1
                     close_socket(sock3)
-            elif sock4 == sock: #Radio
+            elif sock4 == sock: # Radio(Not Used)
                 try:
                     recvdata = sock.recv(1024)
                     if not recvdata:
@@ -806,7 +861,7 @@ def main():
                     my_logger.info("sock4 Radio socket error")
                     g_sock4_flag = -1
                     close_socket(sock4)
-            elif sock5 == sock: #Display
+            elif sock5 == sock: # Display
                 try:
                     recvdata = sock.recv(1024)
                     if not recvdata:
@@ -818,6 +873,7 @@ def main():
                     g_sock5_flag = -1
                     close_socket(sock5)
 
+        # select minimum frame counter from all three tables
         select_min_frame_count_from_DB()
         my_logger.info("g_minCnt_tbl_name:"+str(g_minCnt_tbl_name))
         if g_minCnt_tbl_name != None:
@@ -834,6 +890,7 @@ def main():
             my_logger.info("No data need to be send")
 
         return_state = ""
+        # check if there have sensordata need to send 
         if Data_need_to_send != None:
             my_logger.info("Sensor data send")
             #sensor_data = Data_need_to_send
@@ -869,6 +926,7 @@ def main():
                 time.sleep(MY_SLEEP_INTERVAL)
                 return_state = ser.readlines()
                 #my_logger.info(return_state)
+            # group error or length error
             else:
                 if length_flag ==0:
                     my_logger.info("Data length error, should not be odd or sensordata length less then 18!")
@@ -887,7 +945,7 @@ def main():
             else:
                 my_logger.info("Result: Send FAIL!")
                 sent_flag=0
-            #Send sensor data to application server or Microwave PC or Radio
+            #Send sensor data to application server or Microwave PC or Radio(Not uesd)
             if sent_flag==1:
                 try:
                     my_logger.info("Send sensor data to Application Server")
@@ -910,9 +968,11 @@ def main():
                     my_logger.info("sock4 Radio socket error")
                     g_sock4_flag = -1
                     close_socket(sock4)
+            # Send sensor data to Display
             if Self_MAC_Level == recv_MAC_Level and length_flag==1:
                 try:
                     my_logger.info("Send sensor data to Display")
+                    # convert from dec to hex
                     combinestr = str(int(sensor_data[10:14],16))+str(int(sensor_data[14:16],16)).zfill(2)
                     my_logger.info("combinestr:"+str(combinestr))
                     if int(combinestr) > 65535:
@@ -923,11 +983,14 @@ def main():
                         convertdata = str('{0:X}'.format(int(combinestr))).zfill(4)
                         my_logger.info("convertdata:"+str(convertdata))
                         crc_data = unhexlify('00060027'+str(convertdata))
+                    # calc crc
                     crc_func = crcmod.predefined.mkCrcFun('modbus')
                     modbus_crc = str('{0:X}'.format(crc_func(crc_data))).zfill(4)
                     my_logger.info("Modbus CRC:"+str(modbus_crc))
                     low_crc = str(modbus_crc)[2:4]
                     high_crc = str(modbus_crc)[0:2]
+                    # display high byte(0026 reg) low byte (0027 reg)
+                    # e.g 0006(cmd)0026(reg)0001(value) A810(modbus RTU crc)
                     if len(convertdata) >4:
                         my_logger.info("Display Data > 65535")
                         socksend_high_data = unhexlify('000600260001A810')
@@ -950,6 +1013,7 @@ def main():
             my_logger.info("Waiting for incoming queue")
 
         return_state = ""
+        # check if there have Correction time data need to send
         if Correction_Time_need_to_send != None:
             my_logger.info("Correction time send")
             #convert Correction_Time_need_to_send to hex time
@@ -984,6 +1048,7 @@ def main():
                 time.sleep(MY_SLEEP_INTERVAL)
                 return_state = ser.readlines()
                 #my_logger.info(return_state)
+            # group error or length error
             else:
                 if length_flag ==0:
                     my_logger.info("Data length error, should not be odd!")
@@ -1002,6 +1067,7 @@ def main():
                 my_logger.info("Result: Send FAIL!")
                 sent_flag=0
 
+            # FFFFFF is broad cast packet
             if 'ffffff' not in sensor_macAddr and 'FFFFFF' not in sensor_macAddr and sent_flag==1:
                 #Send correctiontime ACK to application server or Microwave PC or Radio
                 try:
@@ -1027,6 +1093,7 @@ def main():
                     close_socket(sock4)
 
         return_state = ""
+        # check if there have Retransmit data need to send
         if Retransmission_need_to_send != None:
             my_logger.info("Retransmit send")
             sensor_data = Retransmission_need_to_send
@@ -1058,6 +1125,7 @@ def main():
                 time.sleep(MY_SLEEP_INTERVAL)
                 return_state = ser.readlines()
                 #my_logger.info(return_state)
+            # group error or length error
             else:
                 if length_flag ==0:
                     my_logger.info("Data length error, should not be odd!")

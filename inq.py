@@ -1,5 +1,16 @@
 #!/usr/bin/python
 
+"""
+@file inq.py
+@brief 1. received Mqtt payload from LoRa Gateway and forward it to another repeater.
+       2. received sensor data then put it to the database.
+       3. received correction time command and replace system tinme.
+       4. received retransmission command and select witch sensor data need to be sent.
+@author Nick Lee / Chris Chang
+@date 2019/06
+"""
+
+#System Imports
 import paho.mqtt.client as mqtt
 import threading
 import json
@@ -70,7 +81,9 @@ my_logger.info("inq.py started!!!")
 # my_logger.error('error message')
 # my_logger.critical('critical message')
 
-#To close socket
+"""
+To close socket
+"""
 def close_socket(sock_c):
     global g_socket_list
 
@@ -80,7 +93,9 @@ def close_socket(sock_c):
     except ValueError:
         pass
 
-#get MAC Address for serial
+"""
+Obtain MAC Address from serial interface by at command
+"""
 def get_lora_module_addr(dev_path):
     try:
         ser = serial.Serial(dev_path, 9600, timeout=0.5)
@@ -110,6 +125,10 @@ def get_lora_module_addr(dev_path):
     except serial.serialutil.SerialException:
         #  my_logger.info("FAIL: Cannot open Serial Port (No LoRa Node Inserted)")
         return None
+
+"""
+Create three database tables(sensordata, correctiontime, retransmission), if not exist, will create new one.
+"""
 def Create_DB():
     # Connect to the database
     connection = pymysql.connect(host='localhost',
@@ -139,6 +158,9 @@ def Create_DB():
     finally:
         my_logger.info("connection close!")
 
+"""
+Connect to database and put the sensor data to database tables, db_type 1:Water 2:Rain 3:Lora 4:correctiontime 5:retransmission
+"""
 def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #db_type 1:Water 2:Rain 3:Lora 4:correctiontime 5:retransmission
 
     global g_db_mutex, Sensor_Count
@@ -160,13 +182,14 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
                 cursor.execute("USE sensor")
                 my_logger.info ("p_sensor_mac:"+str(p_sensor_mac))
                 SourceMACAddress = MAC_Address
-                if db_type == 1:
+                if db_type == 1: # parameter = Water
                     my_logger.info("parameter = Water")
                     sql = "select count(*) from sensordata"
                     cursor.execute(sql)
                     for row in cursor:
                         number_of_rows = row["count(*)"]
                     my_logger.info("number_of_rows is:"+str(number_of_rows))
+                    # delete data if reach to MAX DB counter 99999
                     if number_of_rows > MAX_DB_Count:
                         del_number = number_of_rows - MAX_DB_Count
                         my_logger.info("Delete number_of_rows is:"+str(del_number))
@@ -174,16 +197,18 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
                         cursor.execute(sql)
                         connection.commit()
                     tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                    # insert to DB
                     sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', %s)" % (SourceMACAddress, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                     cursor.execute(sql)
                     connection.commit()
-                elif db_type == 2:
+                elif db_type == 2: #parameter = Rain
                     my_logger.info("parameter = Rain")
                     sql = "select count(*) from sensordata"
                     cursor.execute(sql)
                     for row in cursor:
                         number_of_rows = row["count(*)"]
                     my_logger.info("number_of_rows is:"+str(number_of_rows))
+                    # delete data if reach to MAX DB counter 99999
                     if number_of_rows > MAX_DB_Count:
                         del_number = number_of_rows - MAX_DB_Count
                         my_logger.info("Delete number_of_rows is:"+str(del_number))
@@ -191,16 +216,18 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
                         cursor.execute(sql)
                         connection.commit()
                     tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                    # insert to DB
                     sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', %s)" % (SourceMACAddress, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                     cursor.execute(sql)
                     connection.commit()
-                elif db_type == 3:
+                elif db_type == 3: # parameter = Lora
                     my_logger.info("parameter = Lora")
                     sql = "select count(*) from sensordata"
                     cursor.execute(sql)
                     for row in cursor:
                         number_of_rows = row["count(*)"]
                     my_logger.info("number_of_rows is:"+str(number_of_rows))
+                    # delete data if reach to MAX DB counter 99999
                     if number_of_rows > MAX_DB_Count:
                         del_number = number_of_rows - MAX_DB_Count
                         my_logger.info("Delete number_of_rows is:"+str(del_number))
@@ -208,16 +235,18 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
                         cursor.execute(sql)
                         connection.commit()
                     tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                    # insert to DB
                     sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s')" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                     cursor.execute(sql)
                     connection.commit()
-                elif db_type == 4:
+                elif db_type == 4: # parameter = Correction Time
                     my_logger.info("parameter = Correction Time")
                     sql = "select count(*) from correctiontime"
                     cursor.execute(sql)
                     for row in cursor:
                         number_of_rows = row["count(*)"]
                     my_logger.info("number_of_rows is:"+str(number_of_rows))
+                    # delete data if reach to MAX DB counter 99999
                     if number_of_rows > MAX_DB_Count:
                         del_number = number_of_rows - MAX_DB_Count
                         my_logger.info("Delete number_of_rows is:"+str(del_number))
@@ -225,13 +254,16 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
                         cursor.execute(sql)
                         connection.commit()
                     tmp_time = time.localtime(int(p_sensor_data[2:10],16))
+                    # select from DB, check this correction command is not at cool down 2 minutes
                     sql = "select sended_flag, raw_data, source_mac_address, frame_count, last_sent_time from correctiontime WHERE last_sent_time > DATE_SUB(now(), INTERVAL 2 MINUTE) and last_sent_time < now() and source_mac_address='%s'" % (p_sensor_mac)
                     cursor.execute(sql)
                     my_logger.info("cursor.rowcount:"+str(cursor.rowcount))
+                    # rowcount = 0, means not at cool down 2 minutes
                     if(cursor.rowcount==0):
                         sql = "insert ignore into correctiontime (source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s') ON DUPLICATE KEY UPDATE sended_flag =0, last_sent_time=now()" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                         cursor.execute(sql)
                         connection.commit()
+                        # if reveive broadcast packet, replace system time
                         if 'ffffff' in p_sensor_mac or 'FFFFFF' in p_sensor_mac:
                             #replace system time here by nick
                             my_logger.info("Replace system time!!!")
@@ -240,13 +272,14 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
                             os.system('date -s "%s"' % strtime)
                     else:
                         my_logger.info("Replace system time, wait colddown 2 mins")
-                elif db_type == 5:
+                elif db_type == 5: # parameter = Retransmition
                     my_logger.info("parameter = Retransmition")
                     sql = "select count(*) from retransmission"
                     cursor.execute(sql)
                     for row in cursor:
                         number_of_rows = row["count(*)"]
                     my_logger.info("number_of_rows is:"+str(number_of_rows))
+                    # delete data if reach to MAX DB counter 99999
                     if number_of_rows > MAX_DB_Count:
                         del_number = number_of_rows - MAX_DB_Count
                         my_logger.info("Delete number_of_rows is:"+str(del_number))
@@ -256,9 +289,11 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
                     tmp_time = time.localtime(int(p_sensor_data[2:10],16))
                     time_interval = int(p_sensor_data[10:12],16)
                     my_logger.info("time_interval:"+str(time_interval))
+                    # select from DB, check this Retransmition command is not at cool down 2 minutes
                     sql = "select sended_flag, raw_data, source_mac_address, frame_count, last_sent_time from retransmission WHERE last_sent_time > DATE_SUB(now(), INTERVAL 2 MINUTE) and source_mac_address='%s' and time='%s'" % (p_sensor_mac, time.strftime('%Y-%m-%d %H:%M:%S',tmp_time))
                     cursor.execute(sql)
                     my_logger.info("cursor.rowcount:"+str(cursor.rowcount))
+                    # rowcount = 0, means not at cool down 2 minutes
                     if(cursor.rowcount==0):
                         sql = "insert ignore into retransmission(source_mac_address, time, raw_data, frame_count) values('%s', '%s', '%s', '%s') ON DUPLICATE KEY UPDATE sended_flag =0, last_sent_time=now()" % (p_sensor_mac,time.strftime('%Y-%m-%d %H:%M:%S',tmp_time), p_sensor_data, p_sensor_count)
                         cursor.execute(sql)
@@ -270,6 +305,9 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
             connection.close()
         g_db_mutex.release()
 
+"""
+Connect to database and select which sensordata should beretransmit db_type 1: select data to retransmit 2: if doesn't exist select data then insert new retransmit data
+"""
 def connect_DB_select_data(db_type, sensor_mac, time, time_interval, sensor_data, sensor_count): #db_type 1: select data to retransmit 2: if doesn't exist select data then insert new retransmit data
     global Sensor_Count
     # Connect to the database
@@ -287,10 +325,12 @@ def connect_DB_select_data(db_type, sensor_mac, time, time_interval, sensor_data
             my_logger.info("connect to DB select data")
             cursor.execute("USE sensor")
             my_logger.info("sensor_mac:"+str(sensor_mac))
+            # select from DB, check this select retransmit data command is not at cool down 2 minutes
             if db_type == 1:
                 sql = "select sended_flag, retransmit_flag, raw_data, source_mac_address, frame_count, last_sent_time from sensordata WHERE last_sent_time > DATE_SUB(now(), INTERVAL 2 MINUTE) and retransmit_flag =1"
                 cursor.execute(sql)
                 my_logger.info("cursor.rowcount:"+str(cursor.rowcount))
+                # rowcount = 0, means not at cool down 2 minutes
                 if(cursor.rowcount==0):
                     sql = "select source_mac_address, sended_flag, retransmit_flag, raw_data, frame_count from sensordata WHERE time >='%s' and time < DATE_ADD('%s', INTERVAL '%s' MINUTE) and source_mac_address='%s'" % (time, time, time_interval, sensor_mac)
                     cursor.execute(sql)
@@ -314,14 +354,17 @@ def connect_DB_select_data(db_type, sensor_mac, time, time_interval, sensor_data
                 for row in cursor:
                    number_of_rows = row["count(*)"]
                 my_logger.info("number_of_rows is:"+str(number_of_rows))
+                # delete data if reach to MAX DB counter 99999
                 if number_of_rows > MAX_DB_Count:
                     del_number = number_of_rows - MAX_DB_Count
                     my_logger.info("Delete number_of_rows is:"+str(del_number))
                     sql = "delete from sensordata order by time limit %s" % del_number
                     cursor.execute(sql)
                     connection.commit()
+                # select from DB, check this select retransmit ACK data command is not at cool down 2 minutes
                 sql = "select sended_flag, retransmit_flag, raw_data, source_mac_address, frame_count, last_sent_time from sensordata WHERE last_sent_time > DATE_SUB(now(), INTERVAL 2 MINUTE) and source_mac_address='%s' and frame_count='%s'" % (sensor_mac, sensor_count)
                 cursor.execute(sql)
+                # rowcount = 0, means not at cool down 2 minutes
                 if(cursor.rowcount==0):
                     sql = "insert ignore into sensordata (source_mac_address, time, raw_data, frame_count, sended_flag, retransmit_flag) values('%s', '%s', '%s', '%s', 1, 1) ON DUPLICATE KEY UPDATE retransmit_flag =1, last_sent_time=now()" % (sensor_mac, time, sensor_data, sensor_count)
                     cursor.execute(sql)
@@ -332,13 +375,16 @@ def connect_DB_select_data(db_type, sensor_mac, time, time_interval, sensor_data
         my_logger.info("connection close!")
         connection.close()
 
-# The callback for when the client receives a CONNACK response from the server.
+"""
+The callback for when the client receives a CONNACK response from the mqtt server.
+"""
 def on_connect(client, userdata, flags, rc):
     my_logger.info("Mqtt Connected.")
     client.subscribe("#")
 
-
-# The callback for when a PUBLISH message is received from the server.
+"""
+The callback for when a PUBLISH message is received from the mqtt server.
+"""
 def on_message(client, userdata, msg):
     global Sensor_Count
     json_count1 = 0
@@ -360,18 +406,23 @@ def on_message(client, userdata, msg):
             Data_type = Command & ~( 1<<2 | 1<<3 | 1<<4 | 1<<5 | 1<<6 | 1<<7 )
             # Store data to DB
             # Check the command if not sensor data do not insert to DB
+            # Sensor Lora Packet
             if CMD == 0 and (Data_type == 1 or Data_type == 2):
                 my_logger.info("Receive Sensor data from lora")
+                # Forward L1->L2->L3->L4
                 if Self_MAC_Level >= recv_mac_level:
                     my_logger.info("Ready to put sensor data to DB")
                     connect_DB_put_data(3, sensor_mac[8:16], sensor_data, sensor_count)
+            # Correction Lora Packet
             elif Data_type == 0 and CMD == 1:
                 my_logger.info("Receive Correction Lora Packet")
                 my_logger.info("MAC_Address:"+str(MAC_Address))
                 my_logger.info("sensor_mac[8:16]:"+str(sensor_mac[8:16]))
+                # FFFFFF is Broadcast Correction Packet
                 if 'ffffff' in sensor_mac[8:16] or 'FFFFFF' in sensor_mac[8:16]:
                     my_logger.info("Receive Broadcast Correction Packet")
                     #pepare correction time ack
+                    # Receive command L4->L3->L2->L1
                     if Self_MAC_Level <= recv_mac_level:
                         my_logger.info("Ready to put correction time data to DB")
                         connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count) #forward broadcast correction time
@@ -382,9 +433,11 @@ def on_message(client, userdata, msg):
                         my_logger.info("Sensor count:"+str(Sensor_Count))
                         connect_DB_put_data(4, MAC_Address, sensor_data, Sensor_Count) #send ack correction
                 else:
+                    # Forward L1->L2->L3->L4
                     if Self_MAC_Level >= recv_mac_level:
                         my_logger.info("Forward Correction 'ACK' Packet")
                         connect_DB_put_data(4, sensor_mac[8:16], sensor_data, sensor_count)#forward ack correction
+            # Retransmit Lora Packet
             elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 20:
                 my_logger.info("Receive Retransmit Lora Packet")
                 #select witch sensor data need to retransmit
@@ -394,6 +447,7 @@ def on_message(client, userdata, msg):
                 my_logger.info("strtime:"+str(strtime))
                 time_interval = int(sensor_data[10:12],16)
                 my_logger.info("time_interval:"+str(time_interval))
+                # Receive command L4->L3->L2->L1
                 if Self_MAC_Level <= recv_mac_level:
                     my_logger.info("Ready to put retransmit data to DB")
                     connect_DB_put_data(5, sensor_mac[8:16], sensor_data, sensor_count)
@@ -402,6 +456,7 @@ def on_message(client, userdata, msg):
                     connect_DB_select_data(1, sensor_data[12:20], strtime, time_interval, sensor_data , sensor_count)
             elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 18:
                 my_logger.info("Receive Retransmit ACK data from lora")
+                # RForward L1->L2->L3->L4
                 if Self_MAC_Level > recv_mac_level:
                     my_logger.info("Ready to put Retransmit sensor data to DB")
                     #select witch sensor data need to retransmit
@@ -422,6 +477,9 @@ def on_message(client, userdata, msg):
     except:
         my_logger.info("Received a non-UTF8 msg")
 
+"""
+Check socket status, sock1: Water Meter, sock2: Rain Meter, sock3: application Server
+"""
 def TCP_connect(name):
     global sock1
     global sock2
@@ -431,6 +489,7 @@ def TCP_connect(name):
     global g_sock3_flag
     global g_socket_list
 
+    # Water Meter
     if name == Nport1_ip_port:
         try:
             sock1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -451,6 +510,8 @@ def TCP_connect(name):
             os.system("echo \"-1\" > /tmp/Nport1_status")
             os.system("sync")
             pass
+
+    # Rain Meter
     elif name == Nport2_ip_port:
         try:
             sock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -471,6 +532,8 @@ def TCP_connect(name):
             os.system("echo \"-1\" > /tmp/Nport2_status")
             os.system("sync")
             pass
+
+    # Application Server
     elif name == Application_Server_ip_port:
         try:
             sock3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -488,12 +551,18 @@ def TCP_connect(name):
             close_socket(sock3)
             pass
 
+"""
+Use to fine the dot symble in the receive string
+"""
 def findStr(string, subStr, findCnt):
     listStr = string.split(subStr,findCnt)
     if len(listStr) <= findCnt:
         return -1
     return len(string)-len(listStr[-1])-len(subStr)
 
+"""
+Main function will check the sock status in while loop. sock1: Water Meter, sock2: Rain Meter, sock3: application Server
+"""
 def main():
     global sock1
     global sock2
@@ -526,6 +595,8 @@ def main():
     dot_str = ','
     global Sensor_Count
     while True:
+
+        # check connect status
         if g_sock1_flag == -1:
             TCP_connect(Nport1_ip_port)
         else:
@@ -545,6 +616,7 @@ def main():
                         g_sock1_flag = -1
                         close_socket(sock1)
 
+        # check connect status
         if g_sock2_flag == -1:
             TCP_connect(Nport2_ip_port)
         else:
@@ -564,6 +636,7 @@ def main():
                         g_sock2_flag = -1
                         close_socket(sock2)
 
+        # check connect status
         if g_sock3_flag == -1:
             TCP_connect(Application_Server_ip_port)
         else:
@@ -622,6 +695,7 @@ def main():
                         my_logger.info("Reserve_status_2:"+str(Reserve_status_2))
                         Status = (int(Power_status))<<0 | (int(Voltage_status))<<1 | (int(Reserve_status_1))<<2 | (int(Reserve_status_2)) <<3
                         my_logger.info("Status:"+str(Status))
+                        # convert to dec
                         try:
                             Water_float = round(float(Water),2)
                         except:
@@ -637,6 +711,7 @@ def main():
                         Time = int(time.time())
                         #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
+                        # pack format
                         Water_format = binascii.hexlify(struct.pack(Endian + 'BLHBB', CMD, Time, Water_int, Water_decimal,Status))
                         my_logger.info(Water_format)
                         if Sensor_Count == 9999:
@@ -685,6 +760,7 @@ def main():
                         my_logger.info("Reserve_status_2:"+str(Reserve_status_2))
                         Status = (int(Power_status))<<0 | (int(Voltage_status))<<1 | (int(Reserve_status_1))<<2 | (int(Reserve_status_2)) <<3
                         my_logger.info("Status:"+str(Status))
+                        # convert to dec
                         try:
                             Rain_float = round(float(Rain),2)
                             my_logger.info("Rain_float:"+str(Rain_float))
@@ -703,6 +779,7 @@ def main():
                         Time = int(time.time())
                         #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
+                        # pack format
                         Rain_format = binascii.hexlify(struct.pack(Endian + 'BLHBB', CMD, Time, Rain_int, Rain_decimal,Status))
                         my_logger.info(Rain_format)
                         if Sensor_Count == 9999:
@@ -726,6 +803,7 @@ def main():
                         my_logger.info("received Application Server Data:"+str(recvdata))
                         #parser receive data is correction time or retransmit command
                         command = recvdata[8:10]
+                        # correction time command
                         if command == '04':
                             datalen = len(recvdata)
                             if datalen == 18:
@@ -740,6 +818,7 @@ def main():
                                 connect_DB_put_data(4, server_mac_address, data , Sensor_Count)
                             else:
                                 my_logger.info("received correction time command but length error!!!")
+                        # retransmit command
                         elif command == '09' or command == '0a':
                             datalen = len(recvdata)
                             if datalen == 20:
