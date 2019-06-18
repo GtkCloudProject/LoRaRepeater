@@ -33,13 +33,20 @@ MY_LOG_FILENAME = MY_LOG_FILE_PATH + "inq.log"
 REPLY_STRING = "+CDEVADDR:"
 my_dict = {}
 
-Nport1_ip_port = ('192.168.127.88',4001) #water meter
-Nport2_ip_port = ('192.168.127.88',4002) #rain meter
-Nport3_ip_port = ('192.168.127.88',4003) #radio
-Nport4_ip_port = ('192.168.127.88',4004) #display
-Diagnosis_PC_ip_port = ('192.168.127.99',4005)
-Application_Server_ip_port = ('192.168.127.101',4006)
-Microwave_PC_ip_port = ('192.168.127.102',4007)
+
+NETSTAT_NPORT1_IP = "10.56.147.241"
+NETSTAT_NPORT1_PORT = "4001"
+NETSTAT_NPORT2_IP = "10.56.147.241"
+NETSTAT_NPORT2_PORT = "4002"
+NETSTAT_APPLICATION_IP = "10.56.147.176"
+NETSTAT_APPLICATION_PORT = "4006"
+
+Nport1_ip_port = ('10.56.147.241',4001) #water meter
+Nport2_ip_port = ('10.56.147.241',4002) #rain meter
+Nport3_ip_port = ('10.56.147.241',4003) #radio
+Nport4_ip_port = ('10.56.147.241',4004) #display
+Diagnosis_PC_ip_port = ('10.56.147.240',4005)
+Application_Server_ip_port = ('10.56.147.176',4006)
 
 MAC_Address=0
 Self_MAC_Level=0
@@ -600,14 +607,14 @@ def main():
         if g_sock1_flag == -1:
             TCP_connect(Nport1_ip_port)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4001|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT1_IP + ':' + NETSTAT_NPORT1_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock1_flag = -1
                     close_socket(sock1)
             if g_sock1_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4001|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT1_IP + ':' + NETSTAT_NPORT1_PORT+ '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
@@ -620,14 +627,14 @@ def main():
         if g_sock2_flag == -1:
             TCP_connect(Nport2_ip_port)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4002|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT2_IP + ':' + NETSTAT_NPORT2_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock2_flag = -1
                     close_socket(sock2)
             if g_sock2_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4002|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT2_IP + ':' + NETSTAT_NPORT2_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
@@ -640,14 +647,14 @@ def main():
         if g_sock3_flag == -1:
             TCP_connect(Application_Server_ip_port)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.101:4006|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_APPLICATION_IP + ':' + NETSTAT_APPLICATION_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock3_flag = -1
                     close_socket(sock3)
             if g_sock3_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4006|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_APPLICATION_IP + ':' + NETSTAT_APPLICATION_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)

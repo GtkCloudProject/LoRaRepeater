@@ -56,13 +56,21 @@ Source_MAC_address = ""
 g_minCnt = 0
 g_minCnt_tbl_name = ""
 
-Nport1_ip_port = ('192.168.127.88',4001) #water meter
-Nport2_ip_port = ('192.168.127.88',4002) #rain meter
-Nport3_ip_port = ('192.168.127.88',4003) #radio
-Nport4_ip_port = ('192.168.127.88',4004) #display
-Diagnosis_PC_ip_port = ('192.168.127.99',4005)
-Application_Server_ip_port = ('192.168.127.101',4006)
-Microwave_PC_ip_port = ('192.168.127.102',4007)
+NETSTAT_NPORT3_IP = "10.56.147.241"
+NETSTAT_NPORT3_PORT = "4003"
+NETSTAT_NPORT4_IP = "10.56.147.241"
+NETSTAT_NPORT4_PORT = "4004"
+NETSTAT_APPLICATION_IP = "10.56.147.176"
+NETSTAT_APPLICATION_PORT = "4006"
+NETSTAT_DIAGNOSIS_IP = "10.56.147.240"
+NETSTAT_DIAGNOSIS_PORT = "4005"
+
+Nport1_ip_port = ('10.56.147.241',4001) #water meter
+Nport2_ip_port = ('10.56.147.241',4002) #rain meter
+Nport3_ip_port = ('10.56.147.241',4003) #radio
+Nport4_ip_port = ('10.56.147.241',4004) #display
+Diagnosis_PC_ip_port = ('10.56.147.240',4005)
+Application_Server_ip_port = ('10.56.147.176',4006)
 
 my_dict_appskey = {}
 my_dict_nwkskey = {}
@@ -83,13 +91,9 @@ g_Nport4_ip_port_status = 0
 #Application Server status
 g_Application_Server_ip_port_status = -1
 
-#Microwave_PC status
-g_Microwave_PC_ip_port_status = -1
-
 #socket flag
 g_sock1_flag = -1
 g_sock2_flag = -1
-g_sock3_flag = -1
 g_sock4_flag = -1
 g_sock5_flag = -1
 
@@ -137,13 +141,11 @@ To show device I/O status
 def report_status_to_diagnosis_pc():
     global sock1
     global sock2
-    global sock3
     global sock4
     global sock5
     global g_Nport1_ip_port_status
     global g_Nport2_ip_port_status
     global g_Application_Server_ip_port_status
-    global g_Microwave_PC_ip_port_status
     global g_sock1_flag
 
     try:
@@ -239,16 +241,6 @@ def report_status_to_diagnosis_pc():
             my_logger.info(io_status)
             sock1.send(io_status)
 
-        #Microwave_PC
-        if g_Microwave_PC_ip_port_status == 0:
-            io_status = "Microwave PC Status %s \n" %(STATUS_OK)
-            my_logger.info(io_status)
-            sock1.send(io_status)
-        else:
-            io_status = "Microwave PC Status %s \n" %(STATUS_FAIL)
-            my_logger.info(io_status)
-            sock1.send(io_status)
-
         sock1.send("\n")
 
     except socket.error:
@@ -257,21 +249,18 @@ def report_status_to_diagnosis_pc():
         close_socket(sock1)
 
 """
-Check socket status, sock1: Diagnosis PC, sock2: Application Server, sock3: Microwave PC sock4: Radio(Not used) sock5: Display
+Check socket status, sock1: Diagnosis PC, sock2: Application Server, sock4: Radio(Not used) sock5: Display
 """
 def TCP_connect(name):
     global sock1
     global sock2
-    global sock3
     global sock4
     global sock5
     global g_Nport3_ip_port_status
     global g_Nport4_ip_port_status
     global g_Application_Server_ip_port_status
-    global g_Microwave_PC_ip_port_status
     global g_sock1_flag
     global g_sock2_flag
-    global g_sock3_flag
     global g_sock4_flag
     global g_sock5_flag
     global g_socket_list
@@ -311,25 +300,6 @@ def TCP_connect(name):
             g_Application_Server_ip_port_status = -1
             g_sock2_flag = -1
             close_socket(sock2)
-            pass
-    # Microwave PC
-    elif name == Microwave_PC_ip_port:
-        try:
-            sock3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock3.settimeout(1)
-            sock3.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-            sock3.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
-            sock3.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
-            sock3.connect(Microwave_PC_ip_port)
-            my_logger.info("sock3 Microwave PC connect")
-            g_Microwave_PC_ip_port_status = 0
-            g_sock3_flag = 0
-            g_socket_list.append(sock3)
-        except:
-            my_logger.info("sock3 Microwave PC connect error")
-            g_Microwave_PC_ip_port_status = -1
-            g_sock3_flag = -1
-            close_socket(sock3)
             pass
     # Radio(Not used)
     elif name == Nport3_ip_port:
@@ -654,7 +624,7 @@ def get_lora_module_addr(dev_path):
         return None
 
 """
-Main function will check the sock status in while loop. sock1: Diagnosis PC, sock2: Application Server, sock3: Microwave PC sock4: Radio(Not used) sock5: Display
+Main function will check the sock status in while loop. sock1: Diagnosis PC, sock2: Application Server, sock4: Radio(Not used) sock5: Display
 And select the minimum frame counter from all three database then sent by lora at command.
 """
 def main():
@@ -665,12 +635,10 @@ def main():
     global g_Retransmit_Flag
     global sock1
     global sock2
-    global sock3
     global sock4
     global sock5
     global g_sock1_flag
     global g_sock2_flag
-    global g_sock3_flag
     global g_sock4_flag
     global g_sock5_flag
     global g_socket_list
@@ -714,14 +682,14 @@ def main():
                 #return_state = ser.readlines()
                 #my_logger.info(return_state)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.99:4005|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_DIAGNOSIS_IP + ':' + NETSTAT_DIAGNOSIS_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock1_flag = -1
                     close_socket(sock1)
             if g_sock1_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.99:4005|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_DIAGNOSIS_IP + ':' + NETSTAT_DIAGNOSIS_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
@@ -734,14 +702,14 @@ def main():
         if g_sock2_flag == -1:
             TCP_connect(Application_Server_ip_port)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.101:4006|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_APPLICATION_IP + ':' + NETSTAT_APPLICATION_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock2_flag = -1
                     close_socket(sock2)
             if g_sock2_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.101:4006|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_APPLICATION_IP + ':' +  NETSTAT_APPLICATION_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
@@ -751,37 +719,17 @@ def main():
                         close_socket(sock2)
 
         # check connect status
-        if g_sock3_flag == -1:
-            TCP_connect(Microwave_PC_ip_port)
-        else:
-            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.102:4007|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
-            count1 = 0
-            for count1 in range(len(cmd_res)):
-                if int(cmd_res[count1]) > 0:
-                    g_sock3_flag = -1
-                    close_socket(sock3)
-            if g_sock3_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.102:4007|awk \'{print $8}\'').readlines()
-                count1 = 0
-                for count1 in range(len(cmd_res)):
-                    res_return = cmd_res[count1].find(SOCK_UNKNOW)
-                    if int(res_return) != -1:
-                        my_logger.info(res_return)
-                        g_sock3_flag = -1
-                        close_socket(sock3)
-
-        # check connect status
         if g_sock4_flag == -1:
             TCP_connect(Nport3_ip_port)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4003|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT3_IP + ':' + NETSTAT_NPORT3_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock4_flag = -1
                     close_socket(sock4)
             if g_sock4_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4003|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT3_IP + ':' + NETSTAT_NPORT3_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
@@ -794,14 +742,14 @@ def main():
         if g_sock5_flag == -1:
             TCP_connect(Nport4_ip_port)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4004|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT4_IP + ':' + NETSTAT_NPORT4_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock5_flag = -1
                     close_socket(sock5)
             if g_sock5_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep 192.168.127.88:4004|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT4_IP + ':' + NETSTAT_NPORT4_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
@@ -839,17 +787,6 @@ def main():
                     my_logger.info("sock2 Application Server socket error")
                     g_sock2_flag = -1
                     close_socket(sock2)
-            elif sock3 == sock: #Microwave PC
-                try:
-                    recvdata = sock.recv(1024)
-                    if not recvdata:
-                        my_logger.info("sock3 Microwave PC disconnect")
-                        g_sock3_flag = -1
-                        close_socket(sock3)
-                except socket.error:
-                    my_logger.info("sock3 Microwave PC socket error")
-                    g_sock3_flag = -1
-                    close_socket(sock3)
             elif sock4 == sock: # Radio(Not Used)
                 try:
                     recvdata = sock.recv(1024)
@@ -945,7 +882,7 @@ def main():
             else:
                 my_logger.info("Result: Send FAIL!")
                 sent_flag=0
-            #Send sensor data to application server or Microwave PC or Radio(Not uesd)
+            #Send sensor data to application server or Radio(Not uesd)
             if sent_flag==1:
                 try:
                     my_logger.info("Send sensor data to Application Server")
@@ -954,13 +891,6 @@ def main():
                     my_logger.info("sock2 Application Server socket error")
                     g_sock2_flag = -1
                     close_socket(sock2)
-                try:
-                    my_logger.info("Send sensor data to Microwave PC")
-                    sock3.send(sensor_macAddr+sensor_data)
-                except socket.error:
-                    my_logger.info("sock3 Microwave PC socket error")
-                    g_sock3_flag = -1
-                    close_socket(sock3)
                 try:
                     sended_len = sock4.send(sensor_macAddr+sensor_data)
                     my_logger.info("Send sensor data to Radio")
@@ -1069,7 +999,7 @@ def main():
 
             # FFFFFF is broad cast packet
             if 'ffffff' not in sensor_macAddr and 'FFFFFF' not in sensor_macAddr and sent_flag==1:
-                #Send correctiontime ACK to application server or Microwave PC or Radio
+                #Send correctiontime ACK to application server or Radio
                 try:
                     my_logger.info("Send correctiontime ACK to Application Server")
                     sock2.send(sensor_macAddr+sensor_data)
@@ -1077,13 +1007,6 @@ def main():
                     my_logger.info("sock2 Application Server socket error")
                     g_sock2_flag = -1
                     close_socket(sock2)
-                try:
-                    my_logger.info("Send correctiontime ACK to Microwave PC")
-                    sock3.send(sensor_macAddr+sensor_data)
-                except socket.error:
-                    my_logger.info("sock3 Microwave PC socket error")
-                    g_sock3_flag = -1
-                    close_socket(sock3)
                 try:
                     my_logger.info("Send correctiontime ACK to Radio")
                     sock4.send(sensor_macAddr+sensor_data)
