@@ -682,14 +682,14 @@ def main():
                 #return_state = ser.readlines()
                 #my_logger.info(return_state)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_DIAGNOSIS_IP + ':' + NETSTAT_DIAGNOSIS_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_DIAGNOSIS_IP + ':' + NETSTAT_DIAGNOSIS_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock1_flag = -1
                     close_socket(sock1)
             if g_sock1_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_DIAGNOSIS_IP + ':' + NETSTAT_DIAGNOSIS_PORT + '|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_DIAGNOSIS_IP + ':' + NETSTAT_DIAGNOSIS_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
@@ -702,14 +702,14 @@ def main():
         if g_sock2_flag == -1:
             TCP_connect(Application_Server_ip_port)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_APPLICATION_IP + ':' + NETSTAT_APPLICATION_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_APPLICATION_IP + ':' + NETSTAT_APPLICATION_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock2_flag = -1
                     close_socket(sock2)
             if g_sock2_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_APPLICATION_IP + ':' +  NETSTAT_APPLICATION_PORT + '|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_APPLICATION_IP + ':' +  NETSTAT_APPLICATION_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
@@ -722,14 +722,14 @@ def main():
         if g_sock4_flag == -1:
             TCP_connect(Nport3_ip_port)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT3_IP + ':' + NETSTAT_NPORT3_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_NPORT3_IP + ':' + NETSTAT_NPORT3_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock4_flag = -1
                     close_socket(sock4)
             if g_sock4_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT3_IP + ':' + NETSTAT_NPORT3_PORT + '|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_NPORT3_IP + ':' + NETSTAT_NPORT3_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
@@ -742,14 +742,14 @@ def main():
         if g_sock5_flag == -1:
             TCP_connect(Nport4_ip_port)
         else:
-            cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT4_IP + ':' + NETSTAT_NPORT4_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_NPORT4_IP + ':' + NETSTAT_NPORT4_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
                     g_sock5_flag = -1
                     close_socket(sock5)
             if g_sock5_flag == 0:
-                cmd_res = os.popen('netstat -apn --timer|grep' + NETSTAT_NPORT4_IP + ':' + NETSTAT_NPORT4_PORT + '|awk \'{print $8}\'').readlines()
+                cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_NPORT4_IP + ':' + NETSTAT_NPORT4_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
