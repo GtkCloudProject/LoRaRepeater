@@ -5,14 +5,14 @@ Diag_PC_IP="10.56.149.62"
 NPort_IP="10.56.149.63"
 
 #To change the IP of inq.py
-sed -i 's/10.56.147.176/"'$App_Server_IP'"/g' /mnt/data/LoRaRepeater/inq.py
-sed -i 's/10.56.147.240/"'$Diag_PC_IP'"/g' /mnt/data/LoRaRepeater/inq.py
-sed -i 's/10.56.147.241/"'$NPort_IP'"/g' /mnt/data/LoRaRepeater/inq.py
+sed -i 's/10.56.147.176/'$App_Server_IP'/g' /mnt/data/LoRaRepeater/inq.py
+sed -i 's/10.56.147.240/'$Diag_PC_IP'/g' /mnt/data/LoRaRepeater/inq.py
+sed -i 's/10.56.147.241/'$NPort_IP'/g' /mnt/data/LoRaRepeater/inq.py
 
 #To change the IP of deq.py
-sed -i 's/10.56.147.176/"'$App_Server_IP'"/g' /mnt/data/LoRaRepeater/deq.py
-sed -i 's/10.56.147.240/"'$Diag_PC_IP'"/g' /mnt/data/LoRaRepeater/deq.py
-sed -i 's/10.56.147.241/"'$NPort_IP'"/g' /mnt/data/LoRaRepeater/deq.py
+sed -i 's/10.56.147.176/'$App_Server_IP'/g' /mnt/data/LoRaRepeater/deq.py
+sed -i 's/10.56.147.240/'$Diag_PC_IP'/g' /mnt/data/LoRaRepeater/deq.py
+sed -i 's/10.56.147.241/'$NPort_IP'/g' /mnt/data/LoRaRepeater/deq.py
 
 echo "05004001 is changed the IP Setting successfully, as following:"
 echo "  - Application SERVER IP : $App_Server_IP"
