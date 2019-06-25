@@ -464,7 +464,7 @@ def on_message(client, userdata, msg):
             elif (Data_type == 1 or Data_type == 2) and CMD == 2 and Data_Len == 18:
                 my_logger.info("Receive Retransmit ACK data from lora")
                 # RForward L1->L2->L3->L4
-                if Self_MAC_Level > recv_mac_level:
+                if Self_MAC_Level >= recv_mac_level:
                     my_logger.info("Ready to put Retransmit sensor data to DB")
                     #select witch sensor data need to retransmit
                     retransmit_time = sensor_data[2:10]
