@@ -805,8 +805,9 @@ def main():
                     close_socket(sock2)
             elif sock3 == sock: #Application server
                 try:
-                    recvdata = sock.recv(1024)
-                    if recvdata:
+                    recvdata_hex = sock.recv(1024)
+                    if recvdata_hex:
+                        recvdata = binascii.hexlify(recvdata_hex)
                         my_logger.info("received Application Server Data:"+str(recvdata))
                         #parser receive data is correction time or retransmit command
                         command = recvdata[8:10]

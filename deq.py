@@ -886,7 +886,9 @@ def main():
             if sent_flag==1:
                 try:
                     my_logger.info("Send sensor data to Application Server")
-                    sock2.send(sensor_macAddr+sensor_data)
+                    socket_string = str(sensor_macAddr+sensor_data)
+                    socket_bytes = bytearray.fromhex(socket_string)
+                    sock2.send(socket_bytes)
                 except socket.error:
                     my_logger.info("sock2 Application Server socket error")
                     g_sock2_flag = -1
@@ -1002,7 +1004,9 @@ def main():
                 #Send correctiontime ACK to application server or Radio
                 try:
                     my_logger.info("Send correctiontime ACK to Application Server")
-                    sock2.send(sensor_macAddr+sensor_data)
+                    socket_string = str(sensor_macAddr+sensor_data)
+                    socket_bytes = bytearray.fromhex(socket_string)
+                    sock2.send(socket_bytes)
                 except socket.error:
                     my_logger.info("sock2 Application Server socket error")
                     g_sock2_flag = -1

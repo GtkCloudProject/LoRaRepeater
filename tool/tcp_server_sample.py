@@ -7,8 +7,10 @@ import socket
 import threading
 import time
 import sys
+import binascii
+import struct
 
-bind_ip = "192.168.127.101"
+bind_ip = "10.56.149.102"
 #bind_ip = "0.0.0.0"
 bind_port = 4006
 
@@ -44,23 +46,31 @@ def handle_client(client_socket):
                 now_time = int(time.time())
                 now_time_str = "%x" % now_time
                 correct_time_cmd = "05ffffff04%s" %(now_time_str)
-                client_socket.send(correct_time_cmd.encode())
+                correct_time_cmd_hex = bytearray.fromhex(correct_time_cmd)
+                client_socket.send(correct_time_cmd_hex)
                 #print "[*] To send the correct time command : %s" % (correct_time_cmd)
                 print ("[%s] To send the correct time command : %s" % (time.asctime(time.localtime(time.time())), correct_time_cmd))
 
             if resend_flag == 1 :
                 resend_flag = 0
-                resend_cmd = "05001005095c85d9a405"
-                client_socket.send(resend_cmd.encode())
+                resend_cmd = "05001002095d13348f03"
+                resend_cmd_hex = bytearray.fromhex(resend_cmd)
+                client_socket.send(resend_cmd_hex)
                 #print "[*] To send the resend command       : %s" % (correct_time_cmd)
                 print ("[%s] To send the resend command       : %s" % (time.asctime(time.localtime(time.time())), resend_cmd))
 
             print("\r")
-            response = client_socket.recv(1024).decode()
+            response_hex = client_socket.recv(1024)
+            response = str(binascii.hexlify(response_hex))
+            print ("response: %s" % response)
             macaddr = response[0:8]
+            print ("macaddr: %s" % macaddr)
             recvtime = response[10:18]
+            print ("recvtime: %s" % recvtime)
             tmp_time = time.localtime(int(recvtime,16))
+            print ("tmp_time: %s" % tmp_time)
             strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
+            print ("strtime: %s" % strtime)
             if response[8:10] == "84" or response[8:10] == "24": #24 is for nick test
                 #print "[*] The correct time response : %s" % (response)
                 print ("[%s] The correct time response : %s" % (time.asctime(time.localtime(time.time())), response))
