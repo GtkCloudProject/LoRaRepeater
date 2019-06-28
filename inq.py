@@ -847,7 +847,7 @@ def main():
                          #   Rain_int = int(Rain)
                         #except ValueError:
                          #   Rain_int = 0
-                    if not recvdata:
+                    if not recvdata_hex:
                         my_logger.info("sock3 Application Server disconnect")
                         g_sock3_flag = -1
                         close_socket(sock3)
