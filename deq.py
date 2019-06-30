@@ -151,6 +151,18 @@ def report_status_to_diagnosis_pc():
     try:
         my_logger.info("Send sensor data to Diagnosis PC")
         sock1.send("== I/O Status Reporting ==\n")
+        #LoRa Repeater FW version
+        sub_p = subprocess.Popen("awk -F \"=\" \'{print $(NF)}\' /mnt/data/LoRaRepeater/VERSION", stdout=subprocess.PIPE, shell=True)
+        (fw_ver, err) = sub_p.communicate()
+        if len(fw_ver) > 0:
+            io_status = "LoRa Repeater FW Version: %s" %(fw_ver)
+            my_logger.info(io_status)
+            sock1.send(io_status)
+        else:
+            io_status = "LoRa Repeater FW Version: 0.0.0 \n"
+            my_logger.info(io_status)
+            sock1.send(io_status)
+
         # MAC address
         if MAC_Address == 0:
             io_status = "Can't get MAC Address\n"
@@ -160,6 +172,7 @@ def report_status_to_diagnosis_pc():
             io_status = "MAC Address: %s \n" %(MAC_Address)
             my_logger.info(io_status)
             sock1.send(io_status)
+
         # LoRa
         sub_p = subprocess.Popen("cat /tmp/lora_status", stdout=subprocess.PIPE, shell=True)
         (lora_status, err) = sub_p.communicate()
