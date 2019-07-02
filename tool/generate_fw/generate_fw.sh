@@ -9,7 +9,7 @@ mkdir default
 cp -rf LoRaRepeater ./default/
 cd ./default/LoRaRepeater/
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -25,7 +25,7 @@ sh ./ch_ip_05001001.sh
 git checkout ./ch_ip_05001001.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -41,7 +41,7 @@ sh ./ch_ip_05001002.sh
 git checkout ./ch_ip_05001002.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -57,7 +57,7 @@ sh ./ch_ip_05001003.sh
 git checkout ./ch_ip_05001003.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -73,7 +73,7 @@ sh ./ch_ip_05001004.sh
 git checkout ./ch_ip_05001004.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -89,7 +89,7 @@ sh ./ch_ip_05001005.sh
 git checkout ./ch_ip_05001005.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -105,7 +105,7 @@ sh ./ch_ip_05001006.sh
 git checkout ./ch_ip_05001006.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -121,7 +121,7 @@ sh ./ch_ip_05001007.sh
 git checkout ./ch_ip_05001007.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -137,7 +137,7 @@ sh ./ch_ip_05001008.sh
 git checkout ./ch_ip_05001008.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -153,7 +153,7 @@ sh ./ch_ip_05001009.sh
 git checkout ./ch_ip_05001009.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -169,7 +169,7 @@ sh ./ch_ip_0500100a.sh
 git checkout ./ch_ip_0500100a.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -185,7 +185,7 @@ sh ./ch_ip_05002001.sh
 git checkout ./ch_ip_05002001.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -201,7 +201,7 @@ sh ./ch_ip_05002002.sh
 git checkout ./ch_ip_05002002.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -217,7 +217,7 @@ sh ./ch_ip_05002003.sh
 git checkout ./ch_ip_05002003.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -233,7 +233,7 @@ sh ./ch_ip_05002004.sh
 git checkout ./ch_ip_05002004.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -249,7 +249,7 @@ sh ./ch_ip_05003001.sh
 git checkout ./ch_ip_05003001.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -265,7 +265,7 @@ sh ./ch_ip_05003002.sh
 git checkout ./ch_ip_05003002.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
@@ -281,7 +281,7 @@ sh ./ch_ip_05004001.sh
 git checkout ./ch_ip_05004001.sh
 cd ../../
 rm -rf .git
-zip repeater_upgrade ./*
+zip -r repeater_upgrade ./*
 mv repeater_upgrade.zip ../
 cd ../
 rm -rf LoRaRepeater
