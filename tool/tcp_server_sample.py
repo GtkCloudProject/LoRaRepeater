@@ -46,7 +46,7 @@ def handle_client(client_socket):
                 now_time = int(time.time())
                 now_time_str = "%x" % now_time
                 correct_time_cmd = "05ffffff04%s" %(now_time_str)
-                correct_time_cmd_hex = bytearray.fromhex(correct_time_cmd)
+                correct_time_cmd_hex = bytearray.fromhex(unicode(correct_time_cmd))
                 client_socket.send(correct_time_cmd_hex)
                 #print "[*] To send the correct time command : %s" % (correct_time_cmd)
                 print ("[%s] To send the correct time command : %s" % (time.asctime(time.localtime(time.time())), correct_time_cmd))
@@ -54,7 +54,7 @@ def handle_client(client_socket):
             if resend_flag == 1 :
                 resend_flag = 0
                 resend_cmd = "05001002095d13348f03"
-                resend_cmd_hex = bytearray.fromhex(resend_cmd)
+                resend_cmd_hex = bytearray.fromhex(unicode(resend_cmd))
                 client_socket.send(resend_cmd_hex)
                 #print "[*] To send the resend command       : %s" % (correct_time_cmd)
                 print ("[%s] To send the resend command       : %s" % (time.asctime(time.localtime(time.time())), resend_cmd))
