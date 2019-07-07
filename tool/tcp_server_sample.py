@@ -11,7 +11,6 @@ import binascii
 import struct
 
 bind_ip = "10.56.149.102"
-#bind_ip = "0.0.0.0"
 bind_port = 4006
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
