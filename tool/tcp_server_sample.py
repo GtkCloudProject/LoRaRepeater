@@ -43,6 +43,7 @@ def handle_client(client_socket):
             if correct_time_flag == 1 :
                 correct_time_flag = 0
                 now_time = int(time.time())
+                now_time = now_time + 28800
                 now_time_str = "%x" % now_time
                 correct_time_cmd = "05ffffff04%s" %(now_time_str)
                 correct_time_cmd_hex = bytearray.fromhex(unicode(correct_time_cmd))
@@ -66,7 +67,7 @@ def handle_client(client_socket):
             print ("macaddr: %s" % macaddr)
             recvtime = response[10:18]
             print ("recvtime: %s" % recvtime)
-            tmp_time = time.localtime(int(recvtime,16))
+            tmp_time = time.gmtime(int(recvtime,16))
             print ("tmp_time: %s" % tmp_time)
             strtime = time.strftime('%Y-%m-%d %H:%M:%S',tmp_time)
             print ("strtime: %s" % strtime)
