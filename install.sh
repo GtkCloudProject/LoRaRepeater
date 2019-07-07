@@ -28,7 +28,7 @@ update-rc.d lora_repeater_starter defaults 99;
 
 #To reconfig crontab
 crontab -r
-(crontab -l ; echo "00 19 * * * sh /mnt/data/LoRaRepeater/back_up_DB.sh") | crontab
+(crontab -l ; echo "0 3 * * * sh /mnt/data/LoRaRepeater/back_up_DB.sh") | crontab
 
 #To reconfig vsftp server
 cd /mnt/data/LoRaRepeater/FTP_config
