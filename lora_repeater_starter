@@ -21,7 +21,7 @@ case "$1" in
     #To disable NTP and set default time to 2011-01-01 12:00:00
     echo "To disable NTP and set default time to 2011-01-01 12:00:00"
     sed -i 's/^\*\/5 \* \* \* \* root \/app\/prodtest\/check_dns.sh/\#\*\/5 \* \* \* \* root \/app\/prodtest\/check_dns.sh/g' /etc/crontab
-    sed -i 's/^\*\/5 \* \* \* \* root \/usr\/bin\/service ntp stop;\/usr\/sbin\/ntpd -gq;\/usr\/bin\/service ntp start/\#\*\/5 \* \* \* \* root \/usr\/bin\/service ntp stop;\/usr\/sbin\/ntpd -gq;\/usr\/bin\/service ntp start/g' /etc/crontab
+    sed -i 's/^\*\/5 \* \* \* \* root \/usr\/bin\/service ntp stop;\/usr\/sbin\/ntpd -gq;\/usr\/bin\/service ntp start/\*\/5 \* \* \* \* root \/usr\/bin\/service ntp stop/g' /etc/crontab
     service cron restart
     service ntp stop
     date -s "2011-01-01 12:00:00"
