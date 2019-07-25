@@ -156,6 +156,7 @@ def report_status_to_diagnosis_pc():
     global g_Application_Server_ip_port_status
     global g_Microwave_PC_ip_port_status
     global g_sock1_flag
+    global MAC_Address
 
     try:
         my_logger.info("Send sensor data to Diagnosis PC")
@@ -698,6 +699,8 @@ def main():
     global g_sock4_flag
     global g_sock5_flag
     global g_socket_list
+    global MAC_Address
+    temp_Sended_Flag = -1
 
     build_app_group_table()
 
@@ -949,6 +952,7 @@ def main():
                 ser.write(data_sending)
                 time.sleep(MY_SLEEP_INTERVAL)
                 return_state = ser.readlines()
+                temp_Sended_Flag = g_Sended_Flag
                 #my_logger.info(return_state)
             # group error or length error
             else:
@@ -962,44 +966,44 @@ def main():
 
             if SENT_OK_TAG in return_state:
                 my_logger.info("Result: SENT.")
-                #sended than update DB change sended flag to 1 by nick
-                update_sensor_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
-                Data_need_to_send = None
-                sent_flag=1
             else:
                 my_logger.info("Result: Send FAIL!")
-                sent_flag=0
+
+            #sended than update DB change sended flag to 1 by nick
+            update_sensor_data_to_DB(1, sensor_macAddr, Data_need_to_send, sensor_frameCnt);
+            Data_need_to_send = None
+
             #Send sensor data to application server or Microwave PC or Radio(Not uesd)
-            if sent_flag==1:
-                try:
-                    my_logger.info("Send sensor data to Application Server")
-                    socket_string = str(sensor_macAddr+sensor_data)
-                    socket_bytes = bytearray.fromhex(socket_string)
-                    sock2.send(socket_bytes)
-                except socket.error:
-                    my_logger.info("sock2 Application Server socket error")
-                    g_sock2_flag = -1
-                    close_socket(sock2)
-                try:
-                    my_logger.info("Send sensor data to Microwave PC")
-                    socket_string = str(sensor_macAddr+sensor_data)
-                    socket_bytes = bytearray.fromhex(socket_string)
-                    sock3.send(socket_bytes)
-                except socket.error:
-                    my_logger.info("sock3 Microwave PC socket error")
-                    g_sock3_flag = -1
-                    close_socket(sock3)
-                try:
-                    my_logger.info("Send sensor data to Radio")
-                    socket_string = str(sensor_macAddr+sensor_data)
-                    socket_bytes = bytearray.fromhex(socket_string)
-                    sock4.send(socket_bytes)
-                except socket.error:
-                    my_logger.info("sock4 Radio socket error")
-                    g_sock4_flag = -1
-                    close_socket(sock4)
+            try:
+                my_logger.info("Send sensor data to Application Server")
+                socket_string = str(sensor_macAddr+sensor_data)
+                socket_bytes = bytearray.fromhex(socket_string)
+                sock2.send(socket_bytes)
+            except socket.error:
+                my_logger.info("sock2 Application Server socket error")
+                g_sock2_flag = -1
+                close_socket(sock2)
+            try:
+                my_logger.info("Send sensor data to Microwave PC")
+                socket_string = str(sensor_macAddr+sensor_data)
+                socket_bytes = bytearray.fromhex(socket_string)
+                sock3.send(socket_bytes)
+            except socket.error:
+                my_logger.info("sock3 Microwave PC socket error")
+                g_sock3_flag = -1
+                close_socket(sock3)
+            try:
+                my_logger.info("Send sensor data to Radio")
+                socket_string = str(sensor_macAddr+sensor_data)
+                socket_bytes = bytearray.fromhex(socket_string)
+                sock4.send(socket_bytes)
+            except socket.error:
+                my_logger.info("sock4 Radio socket error")
+                g_sock4_flag = -1
+                close_socket(sock4)
+
             # Send sensor data to Display
-            if Self_MAC_Level == recv_MAC_Level and length_flag==1:
+            if MAC_Address == sensor_macAddr[0:8] and length_flag == 1 and temp_Sended_Flag == 0:
                 try:
                     my_logger.info("Send sensor data to Display")
                     # convert from dec to hex
@@ -1089,16 +1093,15 @@ def main():
 
             if SENT_OK_TAG in return_state:
                 my_logger.info("Result: SENT.")
-                #sended than update DB change sended flag to 1 by nick
-                update_sensor_data_to_DB(2, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
-                Correction_Time_need_to_send = None
-                sent_flag=1
             else:
                 my_logger.info("Result: Send FAIL!")
-                sent_flag=0
+
+            #sended than update DB change sended flag to 1 by nick
+            update_sensor_data_to_DB(2, sensor_macAddr, Correction_Time_need_to_send, sensor_frameCnt);
+            Correction_Time_need_to_send = None
 
             # FFFFFF is broad cast packet
-            if 'ffffff' not in sensor_macAddr and 'FFFFFF' not in sensor_macAddr and sent_flag==1:
+            if 'ffffff' not in sensor_macAddr and 'FFFFFF' not in sensor_macAddr:
                 #Send correctiontime ACK to application server or Microwave PC or Radio
                 try:
                     my_logger.info("Send correctiontime ACK to Application Server")
@@ -1172,13 +1175,12 @@ def main():
 
             if SENT_OK_TAG in return_state:
                 my_logger.info("Result: SENT.")
-                #sended than update DB change sended flag to 1 by nick
-                update_sensor_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
-                Retransmission_need_to_send = None
-                sent_flag=1
             else:
                 my_logger.info("Result: Send FAIL!")
-                sent_flag=0
+
+            #sended than update DB change sended flag to 1 by nick
+            update_sensor_data_to_DB(3, sensor_macAddr, Retransmission_need_to_send, sensor_frameCnt);
+            Retransmission_need_to_send = None
 
         #To send LoRa repeater I/O status to  Diagnosis PC
         if g_sock1_flag == 0:
