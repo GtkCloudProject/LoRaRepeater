@@ -611,15 +611,17 @@ def main():
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
+                    my_logger.info("NPort1 is disconnected by keep-alive timeout, so closing socket of NPort1")
                     g_sock1_flag = -1
                     close_socket(sock1)
+
             if g_sock1_flag == 0:
                 cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_NPORT1_IP + ':' + NETSTAT_NPORT1_PORT+ '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
                     if int(res_return) != -1:
-                        my_logger.info(res_return)
+                        my_logger.info("NPort1 is disconnected by socket unknown, so closing socket of NPort1")
                         g_sock1_flag = -1
                         close_socket(sock1)
 
@@ -631,15 +633,17 @@ def main():
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
+                    my_logger.info("NPort2 is disconnected by keep-alive timeout, so closing socket of NPort2")
                     g_sock2_flag = -1
                     close_socket(sock2)
+
             if g_sock2_flag == 0:
                 cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_NPORT2_IP + ':' + NETSTAT_NPORT2_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
                     if int(res_return) != -1:
-                        my_logger.info(res_return)
+                        my_logger.info("NPort2 is disconnected by socket unknown, so closing socket of NPort2")
                         g_sock2_flag = -1
                         close_socket(sock2)
 
@@ -651,15 +655,17 @@ def main():
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
+                    my_logger.info("Application Server is disconnected by keep-alive timeout, so closing socket of Application Server")
                     g_sock3_flag = -1
                     close_socket(sock3)
+
             if g_sock3_flag == 0:
                 cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_APPLICATION_IP + ':' + NETSTAT_APPLICATION_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
                     if int(res_return) != -1:
-                        my_logger.info(res_return)
+                        my_logger.info("Application Server is disconnected by socket unknown, so closing socket of Application Server")
                         g_sock3_flag = -1
                         close_socket(sock3)
 
@@ -700,7 +706,7 @@ def main():
                         my_logger.info("Reserve_status_1:"+str(Reserve_status_1))
                         Reserve_status_2 = recvdata[fivth_dot+1:len(recvdata)]
                         my_logger.info("Reserve_status_2:"+str(Reserve_status_2))
-                        Status = (int(Power_status))<<0 | (int(Voltage_status))<<1 | (int(Reserve_status_1))<<2 | (int(Reserve_status_2)) <<3
+                        Status = (int(Power_status))<<7 | (int(Voltage_status))<<6 | (int(Reserve_status_1))<<5 | (int(Reserve_status_2))<<4
                         my_logger.info("Status:"+str(Status))
                         # convert to dec
                         try:
@@ -765,7 +771,7 @@ def main():
                         my_logger.info("Reserve_status_1:"+str(Reserve_status_1))
                         Reserve_status_2 = recvdata[fivth_dot+1:len(recvdata)]
                         my_logger.info("Reserve_status_2:"+str(Reserve_status_2))
-                        Status = (int(Power_status))<<0 | (int(Voltage_status))<<1 | (int(Reserve_status_1))<<2 | (int(Reserve_status_2)) <<3
+                        Status = (int(Power_status))<<7 | (int(Voltage_status))<<6 | (int(Reserve_status_1))<<5 | (int(Reserve_status_2))<<4
                         my_logger.info("Status:"+str(Status))
                         # convert to dec
                         try:

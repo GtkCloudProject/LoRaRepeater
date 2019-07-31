@@ -140,6 +140,7 @@ def close_socket(sock_c):
     try:
         g_socket_list.remove(sock_c)
     except ValueError:
+        my_logger.info("Closing socket error")
         pass
 
 """
@@ -745,15 +746,17 @@ def main():
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
+                    my_logger.info("Diagnosis PC is disconnected by keep-alive timeout, so closing socket of Diagnosis PC")
                     g_sock1_flag = -1
                     close_socket(sock1)
+
             if g_sock1_flag == 0:
                 cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_DIAGNOSIS_IP + ':' + NETSTAT_DIAGNOSIS_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
                     if int(res_return) != -1:
-                        my_logger.info(res_return)
+                        my_logger.info("Diagnosis PC is disconnected by socket unknown, so closing socket of Diagnosis PC")
                         g_sock1_flag = -1
                         close_socket(sock1)
 
@@ -765,15 +768,17 @@ def main():
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
+                    my_logger.info("Application Server is disconnected by keep-alive timeout, so closing socket of Application Server")
                     g_sock2_flag = -1
                     close_socket(sock2)
+
             if g_sock2_flag == 0:
                 cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_APPLICATION_IP + ':' +  NETSTAT_APPLICATION_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
                     if int(res_return) != -1:
-                        my_logger.info(res_return)
+                        my_logger.info("Application Server is disconnected by socket unknown, so closing socket of Application Server")
                         g_sock2_flag = -1
                         close_socket(sock2)
 
@@ -785,15 +790,17 @@ def main():
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
+                    my_logger.info("Microwave PC is disconnected by keep-alive timeout, so closing socket of Microwave PC")
                     g_sock3_flag = -1
                     close_socket(sock3)
+
             if g_sock3_flag == 0:
                 cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_MICROWAVE_IP + ':' + NETSTAT_MICROWAVE_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
                     if int(res_return) != -1:
-                        my_logger.info(res_return)
+                        my_logger.info("Microwave PC is disconnected by socket unknown, so closing socket of Microwave PC")
                         g_sock3_flag = -1
                         close_socket(sock3)
 
@@ -807,13 +814,15 @@ def main():
                 if int(cmd_res[count1]) > 0:
                     g_sock4_flag = -1
                     close_socket(sock4)
+                    my_logger.info("NPort3 is disconnected by keep-alive timeout, so closing socket of NPort3")
+
             if g_sock4_flag == 0:
                 cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_NPORT3_IP + ':' + NETSTAT_NPORT3_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
                     if int(res_return) != -1:
-                        my_logger.info(res_return)
+                        my_logger.info("NPort3 is disconnected by socket unknown, so closing socket of NPort3")
                         g_sock4_flag = -1
                         close_socket(sock4)
 
@@ -825,15 +834,17 @@ def main():
             count1 = 0
             for count1 in range(len(cmd_res)):
                 if int(cmd_res[count1]) > 0:
+                    my_logger.info("NPort4 is disconnected by keep-alive timeout, so closing socket of NPort4")
                     g_sock5_flag = -1
                     close_socket(sock5)
+
             if g_sock5_flag == 0:
                 cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_NPORT4_IP + ':' + NETSTAT_NPORT4_PORT + '|awk \'{print $8}\'').readlines()
                 count1 = 0
                 for count1 in range(len(cmd_res)):
                     res_return = cmd_res[count1].find(SOCK_UNKNOW)
                     if int(res_return) != -1:
-                        my_logger.info(res_return)
+                        my_logger.info("NPort4 is disconnected by socket unknown, so closing socket of NPort4")
                         g_sock5_flag = -1
                         close_socket(sock5)
 
@@ -852,7 +863,7 @@ def main():
                         g_sock1_flag = -1
                         close_socket(sock1)
                 except socket.error:
-                    my_logger.info("sock1 Diagnosis_PC socket error")
+                    my_logger.info("sock1 Diagnosis_PC socket recv error")
                     g_sock1_flag = -1
                     close_socket(sock1)
             elif sock2 == sock: # Application Server
@@ -863,7 +874,7 @@ def main():
                         g_sock2_flag = -1
                         close_socket(sock2)
                 except socket.error:
-                    my_logger.info("sock2 Application Server socket error")
+                    my_logger.info("sock2 Application Server socket recv error")
                     g_sock2_flag = -1
                     close_socket(sock2)
             elif sock3 == sock: #Microwave PC
@@ -874,7 +885,7 @@ def main():
                         g_sock3_flag = -1
                         close_socket(sock3)
                 except socket.error:
-                    my_logger.info("sock3 Microwave PC socket error")
+                    my_logger.info("sock3 Microwave PC socket recv error")
                     g_sock3_flag = -1
                     close_socket(sock3)
             elif sock4 == sock: # Radio(Not Used)
@@ -885,7 +896,7 @@ def main():
                         g_sock4_flag = -1
                         close_socket(sock4)
                 except socket.error:
-                    my_logger.info("sock4 Radio socket error")
+                    my_logger.info("sock4 Radio socket recv error")
                     g_sock4_flag = -1
                     close_socket(sock4)
             elif sock5 == sock: # Display
@@ -896,7 +907,7 @@ def main():
                         g_sock5_flag = -1
                         close_socket(sock5)
                 except socket.error:
-                    my_logger.info("sock5 Display socket error 1")
+                    my_logger.info("sock5 Display socket recv error")
                     g_sock5_flag = -1
                     close_socket(sock5)
 
@@ -980,7 +991,7 @@ def main():
                 socket_bytes = bytearray.fromhex(socket_string)
                 sock2.send(socket_bytes)
             except socket.error:
-                my_logger.info("sock2 Application Server socket error")
+                my_logger.info("sock2 Application Server socket send error")
                 g_sock2_flag = -1
                 close_socket(sock2)
             try:
@@ -989,7 +1000,7 @@ def main():
                 socket_bytes = bytearray.fromhex(socket_string)
                 sock3.send(socket_bytes)
             except socket.error:
-                my_logger.info("sock3 Microwave PC socket error")
+                my_logger.info("sock3 Microwave PC socket send error")
                 g_sock3_flag = -1
                 close_socket(sock3)
             try:
@@ -998,7 +1009,7 @@ def main():
                 socket_bytes = bytearray.fromhex(socket_string)
                 sock4.send(socket_bytes)
             except socket.error:
-                my_logger.info("sock4 Radio socket error")
+                my_logger.info("sock4 Radio socket send error")
                 g_sock4_flag = -1
                 close_socket(sock4)
 
@@ -1109,7 +1120,7 @@ def main():
                     socket_bytes = bytearray.fromhex(socket_string)
                     sock2.send(socket_bytes)
                 except socket.error:
-                    my_logger.info("sock2 Application Server socket error")
+                    my_logger.info("sock2 Application Server socket send ACK error")
                     g_sock2_flag = -1
                     close_socket(sock2)
                 try:
@@ -1118,7 +1129,7 @@ def main():
                     socket_bytes = bytearray.fromhex(socket_string)
                     sock3.send(socket_bytes)
                 except socket.error:
-                    my_logger.info("sock3 Microwave PC socket error")
+                    my_logger.info("sock3 Microwave PC socket send ACK error")
                     g_sock3_flag = -1
                     close_socket(sock3)
                 try:
@@ -1127,7 +1138,7 @@ def main():
                     socket_bytes = bytearray.fromhex(socket_string)
                     sock4.send(socket_bytes)
                 except socket.error:
-                    my_logger.info("sock4 Radio socket error")
+                    my_logger.info("sock4 Radio socket send ACK error")
                     g_sock4_flag = -1
                     close_socket(sock4)
 
