@@ -36,7 +36,7 @@ def main():
 
         ser.write("AT+CDEVADDR?\r\n")
         check_my_dongle = ""
-	check_my_dongle = str(ser.readlines())
+        check_my_dongle = str(ser.readlines())
         MAC_Address = check_my_dongle[check_my_dongle.find(MAC_RES) + 10: check_my_dongle.find(MAC_RES) + 18]
 
         for count1 in range(22):
@@ -54,7 +54,7 @@ def main():
                 print(return_state)
                 time.sleep(5)
 
-        print("=== To finish to test the LoRa signal by sending 20 lora packets ===")  
+        print("=== To finish to test the LoRa signal by sending 20 lora packets ===")
         return ser
     except serial.serialutil.SerialException:
             # print 'FAIL: Cannot open Serial Port (No LoRa Node Inserted)'

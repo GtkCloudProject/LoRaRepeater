@@ -7,7 +7,7 @@ def main():
         ser.flushInput()
         ser.flushOutput()
 
-        ser.write("AT+CADR=2,0,FFFF,0,1\r\n") 
+        ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
         return_state = ser.readlines()
         print(return_state)
         time.sleep(2)
