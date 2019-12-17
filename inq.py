@@ -30,6 +30,7 @@ USB_DEV_ARRAY = ["/dev/ttyS0"]
 LORA_VERIFY_STR = "3132333435363738393061"
 MY_LOG_FILE_PATH = "/mnt/data/Ftpdir/"
 MY_LOG_FILENAME = MY_LOG_FILE_PATH + "inq.log"
+SIGNAL_LOG_FILENAME = MY_LOG_FILE_PATH + "signal_test.log"
 REPLY_STRING = "+CDEVADDR:"
 my_dict = {}
 
@@ -81,6 +82,16 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 my_logger.addHandler(handler)
 my_logger.info("inq.py started!!!")
+
+#To create signal test log format
+signal_logger = logging.getLogger('singal_test')
+signal_logger.setLevel(logging.DEBUG)
+signal_logger_handler = RotatingFileHandler(SIGNAL_LOG_FILENAME, maxBytes=2048000, backupCount=10)
+signal_logger_formatter = logging.Formatter('%(name)s - %(message)s')
+signal_logger_handler.setFormatter(signal_logger_formatter)
+signal_logger.addHandler(signal_logger_handler)
+signal_logger.info("To start to receive signal test log !!!")
+
 # example
 # my_logger.debug('debug message')
 # my_logger.info('info message')
@@ -403,6 +414,12 @@ def on_message(client, userdata, msg):
             sensor_data = json.loads(json_data)[json_count1]['data']
             sensor_count = json.loads(json_data)[json_count1]['frameCnt']
             nFrameCnt = json.loads(json_data)[json_count1]['frameCnt']
+            sensor_time = json.loads(json_data)[json_count1]['time']
+            sensor_channel = json.loads(json_data)[json_count1]['channel']
+            sensor_sf = json.loads(json_data)[json_count1]['sf']
+            sensor_rssi = json.loads(json_data)[json_count1]['rssi']
+            sensor_snr = json.loads(json_data)[json_count1]['snr']
+
             my_logger.info("Receive Lora Data is:"+str(sensor_data))
             Data_Len = len(sensor_data)
             my_logger.info("Data_Len is:"+str(Data_Len))
@@ -479,6 +496,8 @@ def on_message(client, userdata, msg):
                 if sensor_data == LORA_VERIFY_STR:
                     os.system("echo \"0\" > /tmp/lora_status")
                     os.system("sync")
+                    signal_logger.info("[Time]" + str(sensor_time) + ", [Channel]" + str(sensor_channel) + ", [SF]" + str(sensor_sf) + ", [MacAddress]" + str(sensor_mac) + ", [FrameCount]" + str(sensor_count) + ", [RSSI]" + str(sensor_rssi) + ", [SNR]" + str(sensor_snr))
+
             json_count1 = json_count1 + 1
 
     except:

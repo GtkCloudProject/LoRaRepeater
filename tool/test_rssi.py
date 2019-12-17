@@ -46,7 +46,7 @@ def main():
                 print(return_state)
                 time.sleep(5)
             elif count1==0:
-                print('pass')
+                continue
             else:
                 ser.write("AT+SSTX=22,3132333435363738393061,"+MAC_Address+","+str(count1)+",BA21C6216312C334597D88711D9EFABE,BA21C6216312C334597D88711D9EFABE\r\n")
                 #ser.write(snd_str)
