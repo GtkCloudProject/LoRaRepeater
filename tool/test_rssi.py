@@ -9,7 +9,9 @@ def main():
     try:
         print("=== To start to test LoRa signal by sending 20 lora packets ===")
 
+        total_count = int(sys.argv[1]) + 2
         os.system('killall check_repeater.sh inq.py deq.py')
+
         ser = serial.Serial("/dev/ttyS0", 9600, timeout=0.5)
         ser.flushInput()
         ser.flushOutput()
@@ -39,7 +41,7 @@ def main():
         check_my_dongle = str(ser.readlines())
         MAC_Address = check_my_dongle[check_my_dongle.find(MAC_RES) + 10: check_my_dongle.find(MAC_RES) + 18]
 
-        for count1 in range(22):
+        for count1 in range(total_count):
             if count1 == 1:
                 ser.write("AT+SSTX=22,3531313435363738393061,"+MAC_Address+",1,BA21C6216312C334597D88711D9EFABE,BA21C6216312C334597D88711D9EFABE\r\n")
                 return_state = ser.readlines()
