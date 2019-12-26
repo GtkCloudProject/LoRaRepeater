@@ -240,6 +240,38 @@ rm -rf LoRaRepeater
 cd ../
 echo ""
 
+mkdir 05002005
+cp -rf LoRaRepeater ./05002005/
+cd ./05002005/LoRaRepeater/tool/change_ip/
+sed -i 's/\/mnt\/data\/LoRaRepeater/\.\.\/\.\./g' ./ch_ip_05002005.sh
+echo "To chage the IP of 05002005 FW"
+sh ./ch_ip_05002005.sh
+git checkout ./ch_ip_05002005.sh
+cd ../../
+rm -rf .git
+zip -r repeater_upgrade ./*
+mv repeater_upgrade.zip ../
+cd ../
+rm -rf LoRaRepeater
+cd ../
+echo ""
+
+mkdir 05002006
+cp -rf LoRaRepeater ./05002006/
+cd ./05002006/LoRaRepeater/tool/change_ip/
+sed -i 's/\/mnt\/data\/LoRaRepeater/\.\.\/\.\./g' ./ch_ip_05002006.sh
+echo "To chage the IP of 05002006 FW"
+sh ./ch_ip_05002006.sh
+git checkout ./ch_ip_05002006.sh
+cd ../../
+rm -rf .git
+zip -r repeater_upgrade ./*
+mv repeater_upgrade.zip ../
+cd ../
+rm -rf LoRaRepeater
+cd ../
+echo ""
+
 mkdir 05003001
 cp -rf LoRaRepeater ./05003001/
 cd ./05003001/LoRaRepeater/tool/change_ip/

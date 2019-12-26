@@ -680,6 +680,26 @@ def get_lora_module_addr(dev_path):
         return None
 
 """
+set SF and TXP
+"""
+def set_ATcomd_SF_TXP(ser):
+    try:
+        #print("Bill_Log:" + str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+        ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
+        return_state = ser.readlines()
+        print(return_state)
+        time.sleep(2)
+
+        ser.write("AT+CTXPS=1,0,7\r\n")
+        return_state = ser.readlines()
+        print(return_state)
+        time.sleep(2)
+
+        #print("Bill_Log_OK" )
+    except ValueError:
+        my_logger.info("set_ATcomd_SF_TXP error")
+        pass
+"""
 Main function will check the sock status in while loop. sock1: Diagnosis PC, sock2: Application Server, sock3: Microwave PC,
 sock4: Radio(Not used) sock5: Display. And select the minimum frame counter from all three database then sent by lora at command.
 """
@@ -954,6 +974,7 @@ def main():
             if sensor_macAddr[0:2] in my_dict_appskey and length_flag==1:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
+                set_ATcomd_SF_TXP(ser)
                 my_logger.info("sensor_data:"+str(sensor_data))
                 data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + str(sensor_frameCnt) + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
                 data_sending = str(data_sending)
@@ -1082,6 +1103,7 @@ def main():
             if sensor_macAddr[0:2] in my_dict_appskey:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
+                set_ATcomd_SF_TXP(ser)
                 my_logger.info("sensor_data:"+str(sensor_data))
                 data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + str(sensor_frameCnt) + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
                 data_sending = str(data_sending)
@@ -1165,6 +1187,7 @@ def main():
             if sensor_macAddr[0:2] in my_dict_appskey:
                 sensor_nwkskey = my_dict_nwkskey[sensor_macAddr[0:2]]
                 sensor_appskey = my_dict_appskey[sensor_macAddr[0:2]]
+                set_ATcomd_SF_TXP(ser)
                 my_logger.info("sensor_data:"+str(sensor_data))
                 data_sending = "AT+SSTX=" + str(sensor_data_len) + "," + sensor_data + "," + sensor_macAddr[0:8] + "," + str(sensor_frameCnt) + "," + sensor_nwkskey + "," + sensor_appskey + "\n"
                 data_sending = str(data_sending)

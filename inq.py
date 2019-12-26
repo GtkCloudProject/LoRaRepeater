@@ -24,6 +24,7 @@ import time
 import struct
 import binascii
 from logging.handlers import RotatingFileHandler
+from datetime import datetime
 
 USB_DEV_ARRAY = ["/dev/ttyS0"]
 
@@ -91,6 +92,7 @@ signal_logger_formatter = logging.Formatter('%(name)s - %(message)s')
 signal_logger_handler.setFormatter(signal_logger_formatter)
 signal_logger.addHandler(signal_logger_handler)
 signal_logger.info("To start to receive signal test log !!!")
+
 
 # example
 # my_logger.debug('debug message')
@@ -712,6 +714,13 @@ def main():
                                 forth_dot = findStr(recvdata,dot_str,index)
                             elif index ==5:
                                 fivth_dot = findStr(recvdata,dot_str,index)
+                        #GPS time str to datetime
+                        time_recvdata = recvdata.split(",")
+                        dateFormatter = "%m/%d/%Y %H:%M:%S"
+                        date_time = datetime.strptime(time_recvdata[0], dateFormatter)
+                        #datetime to Epoch Timestamp
+                        time_time = time.mktime(date_time.timetuple())
+
                         my_logger.info("Total str Length:"+str(len(recvdata)))
                         lastdotindex = recvdata.rfind(dot_str)
                         my_logger.info("lastdotindex:"+str(lastdotindex))
@@ -740,7 +749,12 @@ def main():
                         Command = 0<<2
                         Data_Type = 1<<0
                         Command_MAC_Level = Self_MAC_Level<<5
-                        Time = int(time.time())
+
+
+                        #Time = int(time.time())   #time from linux sys
+                        #time from GPS
+                        Time = int(time_time)
+
                         #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
                         # pack format
@@ -777,6 +791,13 @@ def main():
                                 forth_dot = findStr(recvdata,dot_str,index)
                             elif index ==5:
                                 fivth_dot = findStr(recvdata,dot_str,index)
+                        # GPS time str to datetime
+                        time_recvdata = recvdata.split(",")
+                        dateFormatter = "%m/%d/%Y %H:%M:%S"
+                        date_time = datetime.strptime(time_recvdata[0], dateFormatter)
+                        # datetime to Epoch Timestamp
+                        time_time = time.mktime(date_time.timetuple())
+
                         my_logger.info("Total str Length:"+str(len(recvdata)))
                         lastdotindex = recvdata.rfind(dot_str)
                         my_logger.info("lastdotindex:"+str(lastdotindex))
@@ -808,7 +829,10 @@ def main():
                         Command = 0<<2
                         Data_Type = 1<<1
                         Command_MAC_Level = Self_MAC_Level<<5
-                        Time = int(time.time())
+
+                        #Time = int(time.time())   #time from linux sys
+                        #time from GPS
+                        Time = int(time_time)
                         #Timestamp = binascii.hexlify(struct.pack(Endian + 'I', Time))
                         CMD= Command_MAC_Level | Command | Data_Type
                         # pack format
