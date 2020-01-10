@@ -16,6 +16,26 @@ def main():
         ser.flushInput()
         ser.flushOutput()
 
+        if len(sys.argv) >= 3:
+            if int(sys.argv[2]) == 10:
+                print('sys.argv[2] == 10')
+                ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
+                return_state = ser.readlines()
+                print(return_state)
+                time.sleep(2)
+            elif int(sys.argv[2]) == 12:
+                print('sys.argv[2] == 12')
+                ser.write("AT+CADR=0,0,FFFF,0,1\r\n")
+                return_state = ser.readlines()
+                print(return_state)
+                time.sleep(2)
+            else:
+                print('sys.argv is Invalid value - SF 10')
+                ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
+                return_state = ser.readlines()
+                print(return_state)
+                time.sleep(2)
+
         ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
         return_state = ser.readlines()
         print(return_state)
