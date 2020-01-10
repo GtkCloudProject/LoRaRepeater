@@ -85,6 +85,8 @@ Endian = '>' #big-endian
 STATUS_OK="OK"
 STATUS_FAIL="FAIL"
 
+SF_VALUE=10
+
 #Nport socket status
 g_Nport1_ip_port_status = 0
 g_Nport2_ip_port_status = 0
@@ -684,18 +686,32 @@ set SF and TXP
 """
 def set_ATcomd_SF_TXP(ser):
     try:
-        #print("Bill_Log:" + str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-        ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
-        return_state = ser.readlines()
-        print(return_state)
-        time.sleep(2)
+
+        if SF_VALUE == 10:
+            print('SF_VALUE = 10')
+            ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
+            return_state = ser.readlines()
+            print(return_state)
+            time.sleep(2)
+        elif SF_VALUE == 12:
+            print('SF_VALUE = 12')
+            ser.write("AT+CADR=0,0,FFFF,0,1\r\n")
+            return_state = ser.readlines()
+            print(return_state)
+            time.sleep(2)
+        else:
+            print('SF_VALUE is invalid value')
+            ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
+            return_state = ser.readlines()
+            print(return_state)
+            time.sleep(2)
 
         ser.write("AT+CTXPS=1,0,7\r\n")
         return_state = ser.readlines()
         print(return_state)
         time.sleep(2)
 
-        #print("Bill_Log_OK" )
+
     except ValueError:
         my_logger.info("set_ATcomd_SF_TXP error")
         pass
