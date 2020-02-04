@@ -16,6 +16,11 @@ def main():
         ser.flushInput()
         ser.flushOutput()
 
+        ser.write("AT+CQCH?\r\n")
+        return_state = ser.readlines()
+        print(return_state)
+        time.sleep(2)
+
         if len(sys.argv) >= 3:
             if int(sys.argv[2]) == 10:
                 print('sys.argv[2] == 10')
@@ -35,11 +40,6 @@ def main():
                 return_state = ser.readlines()
                 print(return_state)
                 time.sleep(2)
-
-        ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
-        return_state = ser.readlines()
-        print(return_state)
-        time.sleep(2)
 
         ser.write("AT+CADR?\r\n")
         return_state = ser.readlines()
