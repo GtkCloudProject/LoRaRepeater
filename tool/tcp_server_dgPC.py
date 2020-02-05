@@ -55,8 +55,6 @@ def handle_client(client_socket):
                     resend_cmd = str(sys.argv[2])
                 else:
                     resend_cmd = "05002005095E281E1001"
-                print('Bill_Log1_str(sys.argv[2]):'+str(sys.argv[2]))
-                print('Bill_Log1_str:' + "05002005095E281E1001")
                 resend_cmd_hex = bytearray.fromhex(unicode(resend_cmd))
                 client_socket.send(resend_cmd_hex)
                 #print "[*] To send the resend command       : %s" % (correct_time_cmd)
