@@ -10,7 +10,7 @@ import sys
 import binascii
 import struct
 
-bind_ip = "10.56.149.240"
+bind_ip = "10.56.147.240"
 bind_port = 4008
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
