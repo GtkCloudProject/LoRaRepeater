@@ -14,6 +14,9 @@ sed -i 's/10.56.147.176/'$App_Server_IP'/g' /mnt/data/LoRaRepeater/deq.py
 sed -i 's/10.56.147.240/'$Diag_PC_IP'/g' /mnt/data/LoRaRepeater/deq.py
 sed -i 's/10.56.147.241/'$NPort_IP'/g' /mnt/data/LoRaRepeater/deq.py
 
+#To change the IP of tcp_server_dgPC.py
+sed -i 's/10.56.147.240/'$Diag_PC_IP'/g' /mnt/data/LoRaRepeater/tool/tcp_server_dgPC.py
+
 echo "The IP Setting is successful, as following:"
 echo "  - Application SERVER IP : $App_Server_IP"
 echo "  - Diagnosis PC IP : $Diag_PC_IP"

@@ -66,6 +66,9 @@ NETSTAT_DIAGNOSIS_IP = "10.56.147.240"
 NETSTAT_DIAGNOSIS_PORT = "4005"
 NETSTAT_MICROWAVE_IP = "10.56.147.176"
 NETSTAT_MICROWAVE_PORT = "4007"
+NETSTAT_DIAGNOSIS_TEST_IP = "10.56.147.240"
+NETSTAT_DIAGNOSIS_TEST_PORT = "4008"
+
 
 Nport1_ip_port = ('10.56.147.241',4001) #water meter
 Nport2_ip_port = ('10.56.147.241',4002) #rain meter
@@ -74,6 +77,7 @@ Nport4_ip_port = ('10.56.147.241',4004) #display
 Diagnosis_PC_ip_port = ('10.56.147.240',4005)
 Application_Server_ip_port = ('10.56.147.176',4006)
 Microwave_PC_ip_port = ('10.56.147.176',4007)
+Diagnosis_PC_Test_ip_port = ('10.56.147.240',4008)
 
 my_dict_appskey = {}
 my_dict_nwkskey = {}
@@ -99,12 +103,17 @@ g_Application_Server_ip_port_status = -1
 #Microwave_PC status
 g_Microwave_PC_ip_port_status = -1
 
+
+#Diagnosis_PC_Test status
+g_Diagnosis_PC_Test_ip_port_status = -1
+
 #socket flag
 g_sock1_flag = -1
 g_sock2_flag = -1
 g_sock3_flag = -1
 g_sock4_flag = -1
 g_sock5_flag = -1
+g_sock6_flag = -1
 
 #select socket queue
 g_socket_list = []
@@ -293,15 +302,18 @@ def TCP_connect(name):
     global sock3
     global sock4
     global sock5
+    global sock6
     global g_Nport3_ip_port_status
     global g_Nport4_ip_port_status
     global g_Application_Server_ip_port_status
     global g_Microwave_PC_ip_port_status
+    global g_Diagnosis_PC_Test_ip_port_status
     global g_sock1_flag
     global g_sock2_flag
     global g_sock3_flag
     global g_sock4_flag
     global g_sock5_flag
+    global g_sock6_flag
     global g_socket_list
 
     # Diagnosis PC
@@ -320,6 +332,25 @@ def TCP_connect(name):
             my_logger.info("sock1 Diagnosis PC connect error")
             g_sock1_flag = -1
             close_socket(sock1)
+            pass
+    # Diagnosis PC Test
+    if name == Diagnosis_PC_Test_ip_port:
+        try:
+            sock6 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock6.settimeout(1)
+            sock6.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+            sock6.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
+            sock6.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
+            sock6.connect(Diagnosis_PC_Test_ip_port)
+            my_logger.info("sock6 Diagnosis PC Test connect")
+            g_Diagnosis_PC_Test_ip_port_status = 0
+            g_sock6_flag = 0
+            g_socket_list.append(sock6)
+        except:
+            my_logger.info("sock6 Diagnosis PC Test connect error")
+            g_Diagnosis_PC_Test_ip_port_status = -1
+            g_sock6_flag = -1
+            close_socket(sock6)
             pass
     # Application Server
     elif name == Application_Server_ip_port:
@@ -730,11 +761,13 @@ def main():
     global sock3
     global sock4
     global sock5
+    global sock6
     global g_sock1_flag
     global g_sock2_flag
     global g_sock3_flag
     global g_sock4_flag
     global g_sock5_flag
+    global g_sock6_flag
     global g_socket_list
     global MAC_Address
     temp_Sended_Flag = -1
@@ -795,7 +828,25 @@ def main():
                         my_logger.info("Diagnosis PC is disconnected by socket unknown, so closing socket of Diagnosis PC")
                         g_sock1_flag = -1
                         close_socket(sock1)
-
+        if g_sock6_flag == -1:
+            TCP_connect(Diagnosis_PC_Test_ip_port)
+        else:
+            cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_DIAGNOSIS_TEST_IP + ':' + NETSTAT_DIAGNOSIS_TEST_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            count1 = 0
+            for count1 in range(len(cmd_res)):
+                if int(cmd_res[count1]) > 0:
+                    my_logger.info("Diagnosis PC Test is disconnected by keep-alive timeout, so closing socket of Diagnosis PC")
+                    g_sock6_flag = -1
+                    close_socket(sock6)
+            if g_sock6_flag == 0:
+                cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_DIAGNOSIS_TEST_IP + ':' + NETSTAT_DIAGNOSIS_TEST_PORT + '|awk \'{print $8}\'').readlines()
+                count1 = 0
+                for count1 in range(len(cmd_res)):
+                    res_return = cmd_res[count1].find(SOCK_UNKNOW)
+                    if int(res_return) != -1:
+                        my_logger.info("Diagnosis PC Test is disconnected by socket unknown, so closing socket of Diagnosis PC")
+                        g_sock6_flag = -1
+                        close_socket(sock6)
         # check connect status
         if g_sock2_flag == -1:
             TCP_connect(Application_Server_ip_port)
@@ -902,6 +953,17 @@ def main():
                     my_logger.info("sock1 Diagnosis_PC socket recv error")
                     g_sock1_flag = -1
                     close_socket(sock1)
+            if sock6 == sock: # Diagnosis_PC_Test
+                try:
+                    recvdata = sock.recv(1024)
+                    if not recvdata:
+                        my_logger.info("sock6 Diagnosis_PC_Test disconnect")
+                        g_sock6_flag = -1
+                        close_socket(sock6)
+                except socket.error:
+                    my_logger.info("sock6 Diagnosis_PC Test socket recv error")
+                    g_sock6_flag = -1
+                    close_socket(sock6)
             elif sock2 == sock: # Application Server
                 try:
                     recvdata = sock.recv(1024)
@@ -1022,6 +1084,15 @@ def main():
             Data_need_to_send = None
 
             #Send sensor data to application server or Microwave PC or Radio(Not uesd)
+            try:
+                my_logger.info("Send sensor data to Diagnosis_PC Test Server")
+                socket_string = str(sensor_macAddr+sensor_data)
+                socket_bytes = bytearray.fromhex(socket_string)
+                sock6.send(socket_bytes)
+            except socket.error:
+                my_logger.info("sock1 Diagnosis_PC Test Server socket send error")
+                g_sock6_flag = -1
+                close_socket(sock6)
             try:
                 my_logger.info("Send sensor data to Application Server")
                 socket_string = str(sensor_macAddr+sensor_data)
@@ -1152,6 +1223,15 @@ def main():
             # FFFFFF is broad cast packet
             if 'ffffff' not in sensor_macAddr and 'FFFFFF' not in sensor_macAddr:
                 #Send correctiontime ACK to application server or Microwave PC or Radio
+                try:
+                    my_logger.info("Send correctiontime ACK to Diagnosis_PC Test Server")
+                    socket_string = str(sensor_macAddr+sensor_data)
+                    socket_bytes = bytearray.fromhex(socket_string)
+                    soc6.send(socket_bytes)
+                except socket.error:
+                    my_logger.info("sock1 Diagnosis_PC Test Server socket send ACK error")
+                    g_sock6_flag = -1
+                    close_socket(sock6)
                 try:
                     my_logger.info("Send correctiontime ACK to Application Server")
                     socket_string = str(sensor_macAddr+sensor_data)

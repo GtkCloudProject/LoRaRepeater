@@ -42,6 +42,8 @@ NETSTAT_NPORT2_IP = "10.56.147.241"
 NETSTAT_NPORT2_PORT = "4002"
 NETSTAT_APPLICATION_IP = "10.56.147.176"
 NETSTAT_APPLICATION_PORT = "4006"
+NETSTAT_DIAGNOSISPC_TEST_IP = "10.56.147.240"
+NETSTAT_DIAGNOSISPC_TEST_PORT = "4008"
 
 Nport1_ip_port = ('10.56.147.241',4001) #water meter
 Nport2_ip_port = ('10.56.147.241',4002) #rain meter
@@ -49,6 +51,7 @@ Nport3_ip_port = ('10.56.147.241',4003) #radio
 Nport4_ip_port = ('10.56.147.241',4004) #display
 Diagnosis_PC_ip_port = ('10.56.147.240',4005)
 Application_Server_ip_port = ('10.56.147.176',4006)
+Diagnosis_PC_Test_ip_port = ('10.56.147.240',4008)
 
 MAC_Address=0
 Self_MAC_Level=0
@@ -63,6 +66,7 @@ g_socket_list = []
 g_sock1_flag = -1
 g_sock2_flag = -1
 g_sock3_flag = -1
+g_sock5_flag = -1
 
 #select timeout
 SELECT_TIMEOUT = 1
@@ -200,7 +204,7 @@ def connect_DB_put_data(db_type, p_sensor_mac, p_sensor_data, p_sensor_count): #
                 # sql = "SELECT `id`, `password` FROM `users` WHERE `email`=%s"
                 my_logger.info("connect to DB")
                 cursor.execute("USE sensor")
-                my_logger.info ("p_sensor_mac:"+str(p_sensor_mac))
+                my_logger.info("p_sensor_mac:"+str(p_sensor_mac))
                 SourceMACAddress = MAC_Address
                 if db_type == 1: # parameter = Water
                     my_logger.info("parameter = Water")
@@ -512,9 +516,11 @@ def TCP_connect(name):
     global sock1
     global sock2
     global sock3
+    global sock5
     global g_sock1_flag
     global g_sock2_flag
     global g_sock3_flag
+    global g_sock5_flag
     global g_socket_list
 
     # Water Meter
@@ -526,7 +532,7 @@ def TCP_connect(name):
             sock1.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
             sock1.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
             sock1.connect(Nport1_ip_port)
-            my_logger.info ("sock1 Water Meter connect")
+            my_logger.info("sock1 Water Meter connect")
             g_sock1_flag = 0
             g_socket_list.append(sock1)
             os.system("echo \"0\" > /tmp/Nport1_status")
@@ -578,6 +584,23 @@ def TCP_connect(name):
             g_sock3_flag = -1
             close_socket(sock3)
             pass
+    # Diagnosis_PC Test Server
+    elif name == Diagnosis_PC_Test_ip_port:
+        try:
+            sock5 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock5.settimeout(1)
+            sock5.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+            sock5.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 20)
+            sock5.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
+            sock5.connect(Diagnosis_PC_Test_ip_port)
+            my_logger.info("sock5 DiagnosisPC Test Server connect")
+            g_sock5_flag = 0
+            g_socket_list.append(sock5)
+        except:
+            my_logger.info("sock4 Diagnosis PC Test Server connect error")
+            g_sock5_flag = -1
+            close_socket(sock5)
+            pass
 
 """
 Use to fine the dot symble in the receive string
@@ -595,9 +618,11 @@ def main():
     global sock1
     global sock2
     global sock3
+    global sock5
     global g_sock1_flag
     global g_sock2_flag
     global g_sock3_flag
+    global g_sock5_flag
     global g_socket_list
 
     global_check_dongle_exist = False
@@ -690,6 +715,27 @@ def main():
                         g_sock3_flag = -1
                         close_socket(sock3)
 
+        # check connect status
+        if g_sock5_flag == -1:
+            TCP_connect(Diagnosis_PC_Test_ip_port)
+        else:
+            cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_DIAGNOSISPC_TEST_IP + ':' + NETSTAT_DIAGNOSISPC_TEST_PORT + '|awk -F \"/\" \'{print $(NF-1)}\'').readlines()
+            count1 = 0
+            for count1 in range(len(cmd_res)):
+                if int(cmd_res[count1]) > 0:
+                    my_logger.info("Diagnosis_PC Test Server is disconnected by keep-alive timeout, so closing socket of Diagnosis_PC Test Server")
+                    g_sock5_flag = -1
+                    close_socket(sock5)
+
+            if g_sock5_flag == 0:
+                cmd_res = os.popen('netstat -apn --timer|grep ' + NETSTAT_DIAGNOSISPC_TEST_IP + ':' + NETSTAT_DIAGNOSISPC_TEST_PORT + '|awk \'{print $8}\'').readlines()
+                count1 = 0
+                for count1 in range(len(cmd_res)):
+                    res_return = cmd_res[count1].find(SOCK_UNKNOW)
+                    if int(res_return) != -1:
+                        my_logger.info("Diagnosis_PC Test Server is disconnected by socket unknown, so closing socket of Application Server")
+                        g_sock5_flag = -1
+                        close_socket(sock5)
         try:
             #Await a read event
             rlist, wlist, elist = select.select( g_socket_list, [], [], SELECT_TIMEOUT)
@@ -904,6 +950,58 @@ def main():
                     my_logger.info("sock3 Application Server socket error")
                     g_sock3_flag = -1
                     close_socket(sock3)
+            elif sock5 == sock: #Diagnosis PC Test server
+                try:
+                    recvdata_hex = sock.recv(1024)
+                    if recvdata_hex:
+                        recvdata = binascii.hexlify(recvdata_hex)
+                        my_logger.info("received Diagnosis PC Test Server Data:"+str(recvdata))
+                        #parser receive data is correction time or retransmit command
+                        command = recvdata[8:10]
+                        # correction time command
+                        if command == '04':
+                            datalen = len(recvdata)
+                            if datalen == 18:
+                                my_logger.info("received correction time command")
+                                server_mac_address = recvdata[0:8]
+                                my_logger.info("server_mac_address: "+str(server_mac_address))
+                                data = recvdata[8:18]
+                                if Sensor_Count == 9999:
+                                    Sensor_Count = 1
+                                else:
+                                    Sensor_Count +=1
+                                connect_DB_put_data(4, server_mac_address, data , Sensor_Count)
+                            else:
+                                my_logger.info("received correction time command but length error!!!")
+                        # retransmit command
+                        elif command == '09' or command == '0a':
+                            datalen = len(recvdata)
+                            if datalen == 20:
+                                my_logger.info("received retransmit command")
+                                retransmit_mac_address = recvdata[0:8]
+                                data = recvdata[8:20]
+                                if Sensor_Count == 9999:
+                                    Sensor_Count = 1
+                                else:
+                                    Sensor_Count +=1
+                                data = data + retransmit_mac_address
+                                connect_DB_put_data(5, MAC_Address, data, Sensor_Count)
+                            else:
+                                my_logger.info("received retransmit command but length error!!!")
+                        else:
+                            my_logger.info("received unknow command")
+                        #try:
+                         #   Rain_int = int(Rain)
+                        #except ValueError:
+                         #   Rain_int = 0
+                    if not recvdata_hex:
+                        my_logger.info("sock5 Diagnosis PC Test Server disconnect")
+                        g_sock5_flag = -1
+                        close_socket(sock5)
+                except socket.error:
+                    my_logger.info("sock4 Diagnosis PC Test Server socket error")
+                    g_sock5_flag = -1
+                    close_socket(sock5)
             else:
                 my_logger.info("Socket Else")
 
