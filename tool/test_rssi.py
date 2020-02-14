@@ -62,6 +62,22 @@ def main():
         MAC_Address = check_my_dongle[check_my_dongle.find(MAC_RES) + 10: check_my_dongle.find(MAC_RES) + 18]
 
         for count1 in range(total_count):
+            if len(sys.argv) >= 3:
+                if int(sys.argv[2]) == 10:
+                    print('sys.argv[2] == 10')
+                    ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
+                    return_state = ser.readlines()
+                    print(return_state)
+                elif int(sys.argv[2]) == 12:
+                    print('sys.argv[2] == 12')
+                    ser.write("AT+CADR=0,0,FFFF,0,1\r\n")
+                    return_state = ser.readlines()
+                    print(return_state)
+                else:
+                    print('sys.argv is Invalid value - SF 10')
+                    ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
+                    return_state = ser.readlines()
+                    print(return_state)
             if count1 == 1:
                 ser.write("AT+SSTX=22,3531313435363738393061,"+MAC_Address+",1,BA21C6216312C334597D88711D9EFABE,BA21C6216312C334597D88711D9EFABE\r\n")
                 return_state = ser.readlines()
