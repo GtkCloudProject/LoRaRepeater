@@ -68,21 +68,28 @@ def main():
                     ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
                     return_state = ser.readlines()
                     print(return_state)
+                    time.sleep(1)
                 elif int(sys.argv[2]) == 12:
                     print('sys.argv[2] == 12')
                     ser.write("AT+CADR=0,0,FFFF,0,1\r\n")
                     return_state = ser.readlines()
                     print(return_state)
+                    time.sleep(1)
                 else:
                     print('sys.argv is Invalid value - SF 10')
                     ser.write("AT+CADR=2,0,FFFF,0,1\r\n")
                     return_state = ser.readlines()
                     print(return_state)
+                    time.sleep(1)
+            ser.write("AT+CTXPS=1,0,7\r\n")
+            return_state = ser.readlines()
+            print(return_state)
+            time.sleep(1)
             if count1 == 1:
                 ser.write("AT+SSTX=22,3531313435363738393061,"+MAC_Address+",1,BA21C6216312C334597D88711D9EFABE,BA21C6216312C334597D88711D9EFABE\r\n")
                 return_state = ser.readlines()
                 print(return_state)
-                time.sleep(5)
+                time.sleep(10)
             elif count1==0:
                 continue
             else:
@@ -90,7 +97,7 @@ def main():
                 #ser.write(snd_str)
                 return_state = ser.readlines()
                 print(return_state)
-                time.sleep(5)
+                time.sleep(10)
 
         print("=== To finish to test the LoRa signal by sending 20 lora packets ===")
         return ser

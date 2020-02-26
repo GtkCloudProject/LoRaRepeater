@@ -1,8 +1,8 @@
 #!/bin/sh
 
 App_Server_IP="10.56.149.102"
-Diag_PC_IP="10.56.149.162"
-NPort_IP="10.56.149.163"
+Diag_PC_IP="10.56.149.152"
+NPort_IP="10.56.149.153"
 
 #To change the IP of inq.py
 sed -i 's/10.56.147.176/'$App_Server_IP'/g' /mnt/data/LoRaRepeater/inq.py

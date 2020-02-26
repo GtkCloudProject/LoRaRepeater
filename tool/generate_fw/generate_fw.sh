@@ -87,6 +87,42 @@ rm -rf LoRaRepeater
 cd ../
 echo ""
 
+
+mkdir 05001003
+cp -rf LoRaRepeater ./05001003/
+cd ./05001003/LoRaRepeater/tool/change_ip/
+sed -i 's/\/mnt\/data\/LoRaRepeater/\.\.\/\.\./g' ./ch_ip_05001003.sh
+echo "To chage the IP of 05001003 FW"
+sh ./ch_ip_05001003.sh
+git checkout ./ch_ip_05001003.sh
+cd ../../
+rm -rf .git
+zip -r repeater_upgrade ./*
+mv repeater_upgrade.zip ../
+cd ../
+rm -rf LoRaRepeater
+cd ../
+echo ""
+
+
+mkdir 05001003SF12
+cp -rf LoRaRepeater ./05001003SF12/
+cd ./05001003SF12/LoRaRepeater/tool/change_ip/
+sed -i 's/\/mnt\/data\/LoRaRepeater/\.\.\/\.\./g' ./ch_ip_05001003.sh
+echo "To chage the IP of 05001003 FW"
+sh ./ch_ip_05001003.sh
+sed -i 's/SF_VALUE=10/SF_VALUE=12/g' ../../deq.py
+sed -i 's/MY_SLEEP_INTERVAL = 4.5/MY_SLEEP_INTERVAL = 10/g' ../../deq.py
+git checkout ./ch_ip_05001003.sh
+cd ../../
+rm -rf .git
+zip -r repeater_upgrade ./*
+mv repeater_upgrade.zip ../
+cd ../
+rm -rf LoRaRepeater
+cd ../
+echo ""
+
 mkdir 05001004
 cp -rf LoRaRepeater ./05001004/
 cd ./05001004/LoRaRepeater/tool/change_ip/
